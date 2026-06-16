@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "CommunityRegistration": {
+      "title": "CommunityRegistration",
+      "description": "User registration record for the Siam Cyber community",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase Auth identifier of the user"
+        },
+        "name": {
+          "type": "string",
+          "description": "The display name of the registered user"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the registered user"
+        },
+        "registeredAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp indicating when they registered"
+        }
+      },
+      "required": ["uid", "name", "email", "registeredAt"]
+    },
+    "PageView": {
+      "title": "PageView",
+      "description": "Analytics tracking for daily site views",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the view occurred"
+        },
+        "country": {
+          "type": "string",
+          "description": "Approximate country of origin"
+        },
+        "email": {
+          "type": "string",
+          "description": "Active user's email or Guest"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Active timezone"
+        }
+      },
+      "required": ["timestamp", "country", "email", "timezone"]
+    }
+  },
+  "firestore": {
+    "/community_registrations/{registrationId}": {
+      "schema": "CommunityRegistration",
+      "description": "Secure community member registrations"
+    },
+    "/page_views/{viewId}": {
+      "schema": "PageView",
+      "description": "Realtime page analytics logs for administration overview"
+    }
+  }
+}
