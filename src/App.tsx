@@ -9,6 +9,7 @@ import { useState, useMemo, useEffect } from "react";
 import { View, Tool, ToolCategory } from "./types";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { IPTVApp } from "./components/IPTVApp";
+import { SpiderWeb } from "./components/SpiderWeb";
 
 const AVATAR_URL = "https://i.postimg.cc/KjWv0jtW/Chat-GPT-Image-Jun-16-2026-05-25-46-PM.png";
 
@@ -259,6 +260,7 @@ export default function App() {
   return (
     <div className="relative min-h-screen flex flex-col font-sans overflow-x-hidden selection:bg-blue-500/30">
       <BackgroundGlows />
+      {view === "hero" && <SpiderWeb />}
       <Header currentView={view} setView={setView} onContactClick={() => setIsContactOpen(true)} />
 
       <AnimatePresence mode="wait">
@@ -270,9 +272,9 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.6 }}
-            className="relative z-10 flex-grow flex flex-col items-center justify-center px-4 sm:px-6 text-center pt-24 sm:pt-28 pb-12"
+            className="relative z-10 flex-grow flex flex-col items-center justify-center w-full h-[85vh] max-h-[90vh] sm:h-auto sm:max-h-none px-4 sm:px-6 text-center pt-20 sm:pt-28 pb-4 sm:pb-12 overflow-hidden"
           >
-            <div className="max-w-4xl py-12 sm:py-20">
+            <div className="w-full max-w-4xl py-2 sm:py-20 flex flex-col items-center justify-center">
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -286,7 +288,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="font-display text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-4 sm:mb-6 bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent leading-tight sm:leading-none"
+                className="font-display text-[2.85rem] min-[360px]:text-[3.25rem] sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-3 sm:mb-6 bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent leading-[1.1] sm:leading-none"
               >
                 Fahim Muntasir Siam
               </motion.h1>
@@ -295,12 +297,12 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="mb-6 sm:mb-8"
+                className="mb-5 sm:mb-8"
               >
-                <h2 className="text-lg sm:text-xl md:text-2xl font-display font-bold text-indigo-400 mb-3 sm:mb-4">
+                <h2 className="text-base sm:text-xl md:text-2xl font-display font-bold text-indigo-400 mb-2 sm:mb-4">
                   Ethical Hacker & Developer
                 </h2>
-                <p className="text-white/60 text-sm sm:text-base md:text-xl max-w-2xl mx-auto leading-relaxed px-2">
+                <p className="text-white/75 text-[12px] min-[360px]:text-sm sm:text-base md:text-xl max-w-sm sm:max-w-2xl mx-auto leading-relaxed px-2 font-medium">
                   Building useful tools, modern web experiences, automation systems and secure digital products.
                 </p>
               </motion.div>
@@ -309,10 +311,11 @@ export default function App() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
+                className="w-full flex justify-center"
               >
                 <button 
                   onClick={() => setView("tools")}
-                  className="group relative px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl bg-white text-black font-display font-black text-sm sm:text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
+                  className="group relative w-[80%] max-w-[280px] sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl bg-white text-black font-display font-black text-sm sm:text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2 select-none">
                     Fahim’s All Tools
