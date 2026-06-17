@@ -31,11 +31,37 @@ interface FifaAppProps {
   onWatchLiveIPTV?: (playlistUrl?: string, category?: string) => void;
 }
 
+const getCorsSafeUrl = (url: string): string => {
+  if (!url) return url;
+  let target = url.trim();
+  if (target.includes("raw.githubusercontent.com")) {
+    try {
+      const parsedUrl = new URL(target);
+      const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 3) {
+        const user = pathParts[0];
+        const repo = pathParts[1];
+        let branch = pathParts[2];
+        let pathIdx = 3;
+        if (branch === "refs" && pathParts[3] === "heads") {
+          branch = pathParts[4];
+          pathIdx = 5;
+        }
+        const remainingPath = pathParts.slice(pathIdx).join("/");
+        return `https://cdn.jsdelivr.net/gh/${user}/${repo}@${branch}/${remainingPath}`;
+      }
+    } catch (e) {
+      console.error("CORS conversion error", e);
+    }
+  }
+  return target;
+};
+
 // Highly reliable premium sports stream presets
 const SPORTS_PRESETS: IPTVChannel[] = [
   {
     id: "unite8",
-    name: "⚽ Fahim FIFA Live Sports HD (UNITE 8)",
+    name: "⚽ Fahim FIFA Live Sports (UNITE 8)",
     group: "FIFA Sports",
     url: "http://160.22.105.17:5080/LiveApp/streams/unite8.m3u8",
     logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png"
@@ -48,15 +74,8 @@ const SPORTS_PRESETS: IPTVChannel[] = [
     logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png"
   },
   {
-    id: "mux-test",
-    name: "⚡ T-Sports Bangladesh (HD Multi)" ,
-    group: "Featured",
-    url: "https://test-streams.mux.dev/x36xhg/playlist.m3u8",
-    logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png"
-  },
-  {
-    id: "aljazeera-stream",
-    name: "📺 Al Jazeera Global Live Feed",
+    id: "aljazeera-live",
+    name: "📺 Al Jazeera English",
     group: "Global TV",
     url: "https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
     logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png"
@@ -95,7 +114,7 @@ export const FifaApp = ({ onBack, onWatchLiveIPTV }: FifaAppProps) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/fifa.m3u");
+        const response = await fetch(getCorsSafeUrl("https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/fifa.m3u"));
         if (!response.ok) throw new Error("CORS restricted or source server is offline");
         const m3uText = await response.text();
         const parsed = parseM3U(m3uText);

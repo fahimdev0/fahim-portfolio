@@ -832,7 +832,7 @@ export default function App() {
     setApiToken(token);
   };
 
-  const isStablePage = view === "hero" || view === "tools";
+  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv";
 
   return (
     <div className={`flex flex-col font-sans selection:bg-blue-500/30 w-full relative ${
@@ -934,7 +934,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full"
+            className="w-full h-full overflow-hidden flex flex-col"
           >
             <ErrorBoundary toolName="Fahim IPTV" onReset={() => setView("tools")}>
               <Suspense fallback={
@@ -982,7 +982,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full"
+            className="w-full h-full overflow-hidden flex flex-col"
           >
             <ErrorBoundary toolName="FIFA 2026 World Cup" onReset={() => setView("tools")}>
               <Suspense fallback={

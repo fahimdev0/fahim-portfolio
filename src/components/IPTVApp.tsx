@@ -9,7 +9,7 @@ import {
   ChevronLeft, Upload, X, Play,
   Menu, Info, Radio, AlertCircle, Sparkles,
   Activity, ShieldCheck, ExternalLink, Award, ChevronDown,
-  Home, LayoutGrid
+  Home, LayoutGrid, AlertTriangle
 } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { IPTVChannel, IPTVPlaylist } from "../types";
@@ -52,6 +52,32 @@ const getChannelBadges = (channel: IPTVChannel) => {
   }
   
   return { isHD, is4K, country, flag };
+};
+
+const getCorsSafeUrl = (url: string): string => {
+  if (!url) return url;
+  let target = url.trim();
+  if (target.includes("raw.githubusercontent.com")) {
+    try {
+      const parsedUrl = new URL(target);
+      const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 3) {
+        const user = pathParts[0];
+        const repo = pathParts[1];
+        let branch = pathParts[2];
+        let pathIdx = 3;
+        if (branch === "refs" && pathParts[3] === "heads") {
+          branch = pathParts[4];
+          pathIdx = 5;
+        }
+        const remainingPath = pathParts.slice(pathIdx).join("/");
+        return `https://cdn.jsdelivr.net/gh/${user}/${repo}@${branch}/${remainingPath}`;
+      }
+    } catch (e) {
+      console.error("CORS conversion error", e);
+    }
+  }
+  return target;
 };
 
 // Premium, Netflix-Style mobile content card optimized for card ergonomics and smooth scrolling
@@ -371,6 +397,7 @@ export const IPTVApp = ({
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playlistWarning, setPlaylistWarning] = useState<string | null>(null);
   
   // Real-time Channel Status Checker states
   const [isCheckingStatuses, setIsCheckingStatuses] = useState(false);
@@ -463,15 +490,29 @@ export const IPTVApp = ({
     localStorage.setItem("fahim_iptv_history", JSON.stringify(newHistory));
   };
 
+const DEFAULT_CHANNELS: IPTVChannel[] = [
+  { id: "unite8", name: "⚽ Fahim FIFA Live Sports", group: "FIFA Sports", url: "http://160.22.105.17:5080/LiveApp/streams/unite8.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
+  { id: "redbull-sports", name: "🏆 Red Bull TV Sports Stream", group: "FIFA Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
+  { id: "aljazeera", name: "📺 Al Jazeera English Live", group: "Global TV", url: "https://live-hls-web-aje.getaj.net/AJE/index.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
+  { id: "dw-news", name: "📰 DW News English Feed", group: "Global TV", url: "https://dwamdstream102.akamaized.net/hls/live/2014190/dwstream102/index.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
+  { id: "france24", name: "⚡ France 24 English", group: "Global TV", url: "https://static.france24.com/live/F24_EN_LO_HLS/live_web.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" }
+];
+
   const loadPlaylistFromUrl = async (url: string) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(url);
+      const response = await fetch(getCorsSafeUrl(url));
       if (!response.ok) throw new Error("Failed to fetch playlist data");
       const text = await response.text();
       const parsed = parseM3U(text);
       
+      // Ensure IDs are present
+      parsed.channels = parsed.channels.map(c => ({
+        ...c,
+        id: c.id || Math.random().toString(36).substring(2, 11)
+      }));
+
       // Inject user's custom FIFA / Sports channel
       if (url.includes("fifa.m3u") || url.includes("sports.m3u")) {
         const customChannel: IPTVChannel = {
@@ -494,8 +535,19 @@ export const IPTVApp = ({
 
       setPlaylist(parsed);
       setActiveCategory("All");
+      setVisibleCount(60);
+      setPlaylistWarning(null);
     } catch (err) {
-      setError("This playlist has failed to load due to CORS limit. Try another channel list or upload your own .m3u file!");
+      console.error("Playlist load error, falling back to defaults", err);
+      setPlaylist({ 
+        name: "Default Playlist", 
+        channels: DEFAULT_CHANNELS, 
+        categories: ["All", "Favorites", "Recently Watched", "FIFA Sports", "Global TV"] 
+      });
+      setActiveCategory("All");
+      setVisibleCount(60);
+      setError(null);
+      setPlaylistWarning("The selected remote playlist is currently offline or CORS-restricted. Loaded default high-quality sports & news channels instead.");
     } finally {
       setLoading(false);
     }
@@ -984,6 +1036,18 @@ export const IPTVApp = ({
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    {playlistWarning && (
+                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-left">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="flex-grow">
+                          <p className="text-xs font-bold text-amber-400">Connection Note</p>
+                          <p className="text-[11px] text-zinc-300 mt-1 leading-relaxed">{playlistWarning}</p>
+                        </div>
+                        <button onClick={() => setPlaylistWarning(null)} className="text-zinc-500 hover:text-white transition-colors shrink-0">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                     {/* Mobile IPTV Redesigned View */}
                     <div className="md:hidden">
                       {searchQuery ? (
