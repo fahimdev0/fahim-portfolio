@@ -5,7 +5,7 @@
 
 import { LucideIcon } from "lucide-react";
 
-export type ToolCategory = "All" | "Streaming" | "Security" | "Utilities" | "Web Tools";
+export type ToolCategory = "All" | "Streaming" | "Security" | "Utilities" | "Web Tools" | "Sports";
 
 export interface Tool {
   id: string;
@@ -14,9 +14,11 @@ export interface Tool {
   icon: LucideIcon;
   url?: string;
   category: ToolCategory;
+  status?: "Live" | "Beta" | "Coming Soon";
+  actionText?: string;
 }
 
-export type View = "hero" | "tools" | "iptv";
+export type View = "hero" | "tools" | "iptv" | "freelancing" | "fifa";
 
 export interface IPTVChannel {
   id: string;

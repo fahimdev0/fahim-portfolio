@@ -10,6 +10,18 @@
   body {
     @apply bg-black text-white antialiased selection:bg-blue-500/30;
   }
+  
+  html, body, #root {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Prevent native browser tap highlight on links/buttons */
+  button, a, input, [role="button"], select, textarea {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
 }
 
 @layer utilities {

@@ -4,11 +4,17 @@
  */
 
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Tv, Shield, Zap, Globe, Github, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database } from "lucide-react";
-import { useState, useMemo, useEffect, FormEvent } from "react";
+import { ArrowRight, Tv, Shield, Zap, Globe, Github, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy } from "lucide-react";
+import { useState, useMemo, useEffect, FormEvent, Suspense, lazy } from "react";
 import { View, Tool, ToolCategory } from "./types";
 import { LoadingScreen } from "./components/LoadingScreen";
-import { IPTVApp } from "./components/IPTVApp";
+import { ErrorBoundary } from "./components/core/ErrorBoundary";
+import { TOOL_REGISTRY, TOOL_CATEGORIES } from "./core/toolsRegistry";
+
+// Route-based dynamic lazy loading & Code splitting
+const IPTVApp = lazy(() => import("./components/IPTVApp").then(m => ({ default: m.IPTVApp })));
+const FreelancingApp = lazy(() => import("./components/FreelancingApp").then(m => ({ default: m.FreelancingApp })));
+const FifaApp = lazy(() => import("./components/FifaApp").then(m => ({ default: m.FifaApp })));
 
 // Firestore and Firebase Authentication integrations
 import {
@@ -34,17 +40,9 @@ import { SpiderWeb } from "./components/SpiderWeb";
 
 const AVATAR_URL = "https://i.postimg.cc/KjWv0jtW/Chat-GPT-Image-Jun-16-2026-05-25-46-PM.png";
 
-const TOOLS: Tool[] = [
-  {
-    id: "fahim-ip-tv",
-    name: "Fahim IPTV",
-    description: "Premium IPTV streaming platform.",
-    icon: Tv,
-    category: "Streaming",
-  },
-];
+const TOOLS: Tool[] = TOOL_REGISTRY as unknown as Tool[];
 
-const CATEGORIES: ToolCategory[] = ["All", "Streaming", "Security", "Utilities", "Web Tools"];
+const CATEGORIES: ToolCategory[] = ["All", ...TOOL_CATEGORIES] as ToolCategory[];
 
 const BackgroundGlows = () => {
   return (
@@ -134,126 +132,281 @@ const Header = ({ currentView, setView, onContactClick, onCommunityClick }: { cu
         )}
         <button 
           onClick={onCommunityClick}
-          className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-indigo-500/30 bg-indigo-600/15 hover:bg-indigo-600/25 hover:border-indigo-400/40 text-indigo-400 hover:text-indigo-300 transition-all text-[10px] sm:text-xs font-extrabold select-none active:scale-95 duration-100 flex items-center gap-1 sm:gap-1.5"
+          className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-[#0084ff] to-[#007aff] hover:from-[#007aff] hover:to-[#006bdd] text-white shadow-[0_3px_10px_rgba(0,122,255,0.35)] hover:shadow-[0_5px_15px_rgba(0,122,255,0.5)] transition-all text-[10px] sm:text-xs font-black select-none active:scale-95 duration-100 flex items-center gap-1 sm:gap-1.5 border border-[#007aff]/20"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse hidden min-[360px]:inline-block" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse hidden min-[360px]:inline-block" />
           <span>Join<span className="hidden sm:inline"> Our</span> Community</span>
         </button>
-        <button 
-          onClick={onContactClick}
-          className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-[10px] sm:text-xs font-bold select-none text-white/90 active:scale-95 duration-100"
-        >
-          Get In Touch
-        </button>
+        {currentView !== "tools" && (
+          <button 
+            onClick={onContactClick}
+            className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-[10px] sm:text-xs font-bold select-none text-white/90 active:scale-95 duration-100"
+          >
+            Get In Touch
+          </button>
+        )}
       </div>
     </motion.header>
   );
 };
 
-const ToolCard = ({ tool, featured = false, handleLaunchIPTV }: { tool: Tool; featured?: boolean, handleLaunchIPTV: () => void }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: featured ? -4 : -2, borderColor: featured ? "rgba(59, 130, 246, 0.4)" : "rgba(255, 255, 255, 0.1)" }}
-      className={`group relative flex flex-col p-3.5 sm:p-4.5 rounded-2xl transition-all min-h-[170px] sm:min-h-[185px] h-auto ${
-        featured 
-          ? "bg-white/[0.07] border border-white/20 shadow-[0_0_40px_-15px_rgba(59,130,246,0.3)]" 
-          : "bg-white/[0.03] border border-white/5 opacity-60"
-      }`}
-    >
-      <div className="flex items-start justify-between mb-2 sm:mb-3">
-        <div className={`w-8 h-8 sm:w-9.5 sm:h-9.5 rounded-xl flex items-center justify-center ${featured ? "bg-indigo-600 text-white" : "bg-white/10 text-white/40"}`}>
-          <tool.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-        </div>
-        <span className={`px-2 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${featured ? "bg-indigo-500/20 text-indigo-300" : "bg-white/5 text-white/20"}`}>
-          {tool.category}
-        </span>
-      </div>
-      
-      <div className="flex-grow">
-        <h3 className={`text-xs sm:text-sm font-display font-black mb-1 sm:mb-1.5 leading-tight ${featured ? "text-white" : "text-white/40"}`}>
-          {tool.name}
-        </h3>
-        <p className="text-white/45 text-[10px] sm:text-[11px] leading-relaxed line-clamp-2">
-          {tool.description}
-        </p>
-      </div>
+const getToolAppStoreMeta = (id: string) => {
+  switch (id) {
+    case "fifa-2026":
+      return {
+        subtitle: "FIFA World Cup 2026™ Match Center",
+        genre: "Sports & Live Stream",
+        gradient: "bg-gradient-to-tr from-[#7c2d12] via-[#ea580c] to-[#facc15] border border-amber-500/25 shadow-[0_0_15px_rgba(234,88,12,0.2)]"
+      };
+    case "fahim-ip-tv":
+      return {
+        subtitle: "Live Sports & Global TV Client",
+        genre: "Streaming & TV",
+        gradient: "bg-gradient-to-tr from-[#3a1c71] via-[#d76d77] to-[#ffaf7b]"
+      };
+    case "start-freelancing":
+      return {
+        subtitle: "Beginner Freelancer Roadmap & Bidding Hub",
+        genre: "Business & Career",
+        gradient: "bg-gradient-to-tr from-[#052e16] via-[#064e3b] to-[#0f172a] border border-[#a3e635]/15"
+      };
+    case "cyber-sentinel":
+      return {
+        subtitle: "Active Network Port Auditor",
+        genre: "Security & Audits",
+        gradient: "bg-gradient-to-tr from-[#000428] to-[#004e92]"
+      };
+    case "helix-core":
+      return {
+        subtitle: "Developer minifiers & hash keys",
+        genre: "Developer Utilities",
+        gradient: "bg-gradient-to-tr from-[#11998e] to-[#38ef7d]"
+      };
+    case "vector-speed":
+      return {
+        subtitle: "Real-time stream & network test",
+        genre: "Utilities & Diagnostics",
+        gradient: "bg-gradient-to-tr from-[#f12711] to-[#f5af19]"
+      };
+    case "osint-tracker":
+      return {
+        subtitle: "Open Source Intelligence Tool",
+        genre: "OSINT & Intelligence",
+        gradient: "bg-gradient-to-tr from-[#020617] via-[#0f172a] to-[#1e1b4b] border border-sky-500/10"
+      };
+    case "ai-copilot":
+      return {
+        subtitle: "AI Gemini Workspace Sandbox",
+        genre: "AI & Automation",
+        gradient: "bg-gradient-to-tr from-[#1e1b4b] via-[#3b0764] to-[#4c0519] border border-pink-500/10"
+      };
+    case "cron-automator":
+      return {
+        subtitle: "Dynamic Task Automator Engine",
+        genre: "Automation & Scripts",
+        gradient: "bg-gradient-to-tr from-[#1c1917] via-[#292524] to-[#44403c] border border-stone-500/10"
+      };
+    default:
+      return {
+        subtitle: "Useful tool & resource",
+        genre: "Utility",
+        gradient: "bg-gradient-to-tr from-indigo-600 via-indigo-700 to-purple-800"
+      };
+  }
+};
 
-      {featured && (
-        <button 
-          onClick={() => tool.id === 'fahim-ip-tv' && handleLaunchIPTV()}
-          className="mt-3 sm:mt-4 w-full flex items-center justify-center gap-1.5 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-neutral-100 text-black text-[10px] sm:text-xs font-black shadow-lg transition-all transform active:scale-95"
-        >
-          <span>Launch IPTV</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+const AppStoreIcon = ({ id, icon: Icon }: { id: string; icon: any }) => {
+  const meta = getToolAppStoreMeta(id);
+  const [fifaSrc, setFifaSrc] = useState("https://i.postimg.cc/cKbCq1gV/image.png");
+
+  return (
+    <div className={`relative w-12 h-12 sm:w-[54px] sm:h-[54px] rounded-[22%] ${meta.gradient} flex items-center justify-center shrink-0 shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden border border-white/10 select-none`}>
+      {/* 3D Gloss reflection curve matching Apple design */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/15 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-[45%] bg-white/[0.08] rounded-b-[40%] pointer-events-none" />
+      
+      {/* Specular lighting spots */}
+      <div className="absolute -bottom-4 -left-4 w-7 h-7 rounded-full bg-white/10 blur-md pointer-events-none" />
+      <div className="absolute -top-4 -right-4 w-7 h-7 rounded-full bg-white/10 blur-md pointer-events-none" />
+
+      {id === "fifa-2026" ? (
+        // Beautiful actual FIFA World Cup 2026 Logo loaded with fallback security
+        <div className="relative flex items-center justify-center w-full h-full z-10 select-none p-1.5">
+          <img
+            src={fifaSrc}
+            alt="FIFA 2026"
+            className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+            referrerPolicy="no-referrer"
+            onError={() => {
+              if (fifaSrc === "https://i.postimg.cc/cKbCq1gV/image.png") {
+                setFifaSrc("https://i.postimg.cc/cKbCq1gV/logo.png");
+              } else if (fifaSrc === "https://i.postimg.cc/cKbCq1gV/logo.png") {
+                setFifaSrc("https://i.postimg.cc/cKbCq1gV/image.jpg");
+              } else if (fifaSrc === "https://i.postimg.cc/cKbCq1gV/image.jpg") {
+                setFifaSrc("https://upload.wikimedia.org/wikipedia/commons/c/cf/2026_FIFA_World_Cup_logo.svg");
+              } else if (fifaSrc === "https://upload.wikimedia.org/wikipedia/commons/c/cf/2026_FIFA_World_Cup_logo.svg") {
+                setFifaSrc("https://i.ibb.co/xL3nJbB/fifa-icon.png");
+              }
+            }}
+          />
+        </div>
+      ) : id === "fahim-ip-tv" ? (
+        // Custom IPTV client logo with crisp metallic television screen and check logo representation
+        <div className="relative flex items-center justify-center w-full h-full z-10">
+          <svg className="w-6 sm:w-6.5 h-6 sm:h-6.5 text-white filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="15" rx="3" />
+            <path d="M17 2l-5 5-5-5" strokeWidth="2.2" />
+            <path d="M9 14.5l2 2 4-4" strokeWidth="2.8" stroke="white" />
+          </svg>
+        </div>
+      ) : id === "start-freelancing" ? (
+        // Custom Freelancing logo: custom "F" in bright lime green ("sobuj tiya" color)
+        <div className="relative flex items-center justify-center w-full h-full z-10 select-none">
+          <span 
+            className="font-display font-black text-2xl sm:text-3xl text-[#a3e635] tracking-tighter filter drop-shadow-[0_2px_6px_rgba(163,230,53,0.5)]"
+          >
+            F
+          </span>
+        </div>
+      ) : (
+        <Icon className="w-5.5 sm:w-6 h-5.5 sm:h-6 text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] z-10" />
       )}
-    </motion.div>
+    </div>
   );
 };
 
-const ComingSoonCard = () => (
-  <div className="flex flex-col p-3.5 sm:p-4.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] min-h-[170px] sm:min-h-[185px] h-auto opacity-40">
-    <div className="w-8 h-8 sm:w-9.5 sm:h-9.5 rounded-xl bg-white/5 flex items-center justify-center text-white/10 mb-2 sm:mb-3">
-      <Zap className="w-4 h-4" />
-    </div>
-    <div className="flex-grow">
-      <h3 className="text-xs sm:text-sm font-display font-black text-white/25 mb-1 leading-tight">Coming Soon</h3>
-      <p className="text-white/15 text-[10px] sm:text-[11px] leading-relaxed">New tools are currently under development.</p>
-    </div>
-  </div>
-);
-
-const ToolGrid = ({ activeCategory, handleLaunchIPTV }: { activeCategory: ToolCategory; handleLaunchIPTV: () => void }) => {
+const ToolGrid = ({ 
+  activeCategory, 
+  handleLaunchIPTV, 
+  handleLaunchFreelancing,
+  handleLaunchFifa
+}: { 
+  activeCategory: ToolCategory; 
+  handleLaunchIPTV: (playlistUrl?: string, category?: string) => void; 
+  handleLaunchFreelancing: () => void;
+  handleLaunchFifa: () => void;
+}) => {
   const filteredTools = useMemo(() => {
     if (activeCategory === "All") return TOOLS;
     return TOOLS.filter(t => t.category === activeCategory);
   }, [activeCategory]);
 
-  const showComingSoon = activeCategory === "All" || filteredTools.length === 0;
+  const categoryKicker = useMemo(() => {
+    switch (activeCategory) {
+      case "Streaming": return "OUR FAVOURITES";
+      case "Security": return "NET SECURITY";
+      case "Utilities": return "SYSTEM ESSENTIALS";
+      case "Web Tools": return "PLATFORMS & SPEED";
+      case "Sports": return "SPORTS CENTER";
+      default: return "OUR SELECTION";
+    }
+  }, [activeCategory]);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-5xl">
-      <AnimatePresence mode="popLayout">
-        {filteredTools.map((tool) => (
-          <motion.div
-            key={tool.id}
-            layout
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ToolCard tool={tool} featured={tool.id === "fahim-ip-tv"} handleLaunchIPTV={handleLaunchIPTV} />
-          </motion.div>
-        ))}
-        {showComingSoon && (
-          <motion.div key="soon-1" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}><ComingSoonCard /></motion.div>
-        )}
-        {showComingSoon && (
-          <motion.div key="soon-2" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}><ComingSoonCard /></motion.div>
-        )}
-        {showComingSoon && (
-          <motion.div key="soon-3" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}><ComingSoonCard /></motion.div>
-        )}
-      </AnimatePresence>
+    <div className="w-full max-w-[440px] sm:max-w-[480px] px-4 select-none flex flex-col min-h-0 h-full max-h-[500px]">
+      <motion.div
+        layout
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full bg-[#1c1c1e] text-white rounded-[26px] p-5 sm:p-6 border border-[#2c2c2e]/70 shadow-[0_24px_50px_-15px_rgba(0,0,0,0.85)] flex flex-col min-h-0 h-full gap-4"
+      >
+        {/* App Store Card Header */}
+        <div className="flex flex-col text-left shrink-0">
+          <span className="text-[#8e8e93] text-[9.5px] sm:text-[10px] font-black uppercase tracking-[0.14em] leading-none mb-1">
+            {categoryKicker}
+          </span>
+          <h2 className="text-xl sm:text-[23px] font-extrabold text-white tracking-tight leading-none mt-0.5">
+            Fahim All Tools
+          </h2>
+        </div>
+
+        {/* Divider line */}
+        <div className="h-[1px] bg-white/[0.04] w-full shrink-0" />
+
+        {/* App List */}
+        <div className="flex-grow overflow-y-auto pr-1 select-none flex flex-col gap-0.5 no-scrollbar scroll-smooth">
+          <AnimatePresence mode="popLayout">
+            {filteredTools.map((tool, idx) => {
+              const isLive = tool.status === "Live";
+              const meta = getToolAppStoreMeta(tool.id);
+              
+              return (
+                <motion.div
+                  key={tool.id}
+                  layout
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 8 }}
+                  transition={{ duration: 0.25, delay: idx * 0.04 }}
+                  className="flex items-center justify-between gap-3 sm:gap-4 py-3.5 first:pt-0 last:pb-0 border-b border-white/[0.04] last:border-0 group"
+                >
+                  {/* Left Aspect: Stylized Squicle Icon */}
+                  <AppStoreIcon id={tool.id} icon={tool.icon} />
+
+                  {/* Middle Aspect: App Info */}
+                  <div className="flex flex-col min-w-0 flex-grow text-left">
+                    <h3 className="text-white text-[13.5px] sm:text-[14.5px] font-extrabold tracking-tight leading-snug group-hover:text-indigo-400 transition-colors flex items-center gap-1.5 flex-wrap">
+                      <span>{tool.name}</span>
+                    </h3>
+                    <p className="text-[#a1a1aa] text-[9.5px] sm:text-[11px] font-medium leading-normal mt-1 opacity-90 select-none">
+                      {tool.description}
+                    </p>
+                  </div>
+
+                  {/* Right Aspect: Action Button or Cloud Indicator */}
+                  <div className="flex flex-col items-center justify-center shrink-0 min-w-[70px]">
+                    {isLive ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (tool.id === "fifa-2026") {
+                            handleLaunchFifa();
+                          } else if (tool.id === "fahim-ip-tv") {
+                            handleLaunchIPTV();
+                          } else if (tool.id === "start-freelancing") {
+                            handleLaunchFreelancing();
+                          }
+                        }}
+                        className="bg-[#2c2c2e] hover:bg-[#3a3a3c] text-[#0a84ff] hover:text-[#3396ff] font-extrabold text-[12px] sm:text-[13px] h-7 sm:h-[29px] px-5 rounded-full select-none transition-all active:scale-95 duration-150 flex items-center justify-center border-0 tracking-tight cursor-pointer"
+                      >
+                        Use
+                      </button>
+                    ) : (
+                      // Authentic App Store Cloud Download outline icon with down arrow
+                      <div className="flex flex-col items-center justify-center shrink-0 py-0.5">
+                        <svg className="w-5.5 h-5.5 sm:w-6 sm:h-6 text-[#0a84ff]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 11v6m0 0l-3-3m3 3l3-3" />
+                          <path d="M17 10.5a5.5 5.5 0 0 0-11 0c0 .3 0 .7.1 1a4 4 0 0 0 1.9 7.5h9a5 5 0 0 0 0-10l-.4-.1z" />
+                        </svg>
+                      </div>
+                    )}
+                    <span className="text-[#8e8e93]/50 text-[8px] sm:text-[8.5px] font-black text-center mt-1 uppercase tracking-wider select-none leading-none">
+                      {isLive ? "Live now" : "Soon"}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 };
 
 const Filters = ({ active, onChange }: { active: ToolCategory; onChange: (c: ToolCategory) => void }) => {
   return (
-    <div className="w-full flex justify-center mb-8 px-4 sm:px-6">
-      <div className="overflow-x-auto no-scrollbar flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/5 rounded-full backdrop-blur-sm max-w-full">
+    <div className="w-full flex justify-center mb-6 px-4">
+      <div className="overflow-x-auto no-scrollbar flex items-center gap-0.5 p-0.5 bg-[#1c1c1e] border border-[#2c2c2e]/80 rounded-xl max-w-full shadow-inner select-none">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => onChange(cat)}
-            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+            className={`whitespace-nowrap px-3.5 py-1.5 rounded-[10px] text-[11px] font-black tracking-tight transition-all duration-150 cursor-pointer ${
               active === cat
-                ? "bg-white text-black shadow-lg"
-                : "text-white/30 hover:text-white/60 hover:bg-white/5"
+                ? "bg-[#3a3a3c] text-[#0a84ff] shadow-[0_2px_4px_rgba(0,0,0,0.25)] scale-[1.02]"
+                : "text-[#8e8e93] hover:text-white hover:bg-white/[0.02]"
             }`}
           >
             {cat}
@@ -268,16 +421,67 @@ export default function App() {
   const [view, setView] = useState<View>("hero");
   const [category, setCategory] = useState<ToolCategory>("All");
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionProps, setTransitionProps] = useState<{
+    title?: string;
+    subtitle?: string;
+    icon?: any;
+    glowColor?: string;
+    iconBgColor?: string;
+  }>({});
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleLaunchIPTV = () => {
+  const [iptvPlaylistUrl, setIptvPlaylistUrl] = useState<string | undefined>(undefined);
+  const [iptvActiveCategory, setIptvActiveCategory] = useState<string | undefined>(undefined);
+  const [iptvBackView, setIptvBackView] = useState<View>("tools");
+
+  const handleLaunchIPTV = (playlistUrl?: string, category?: string, backView: View = "tools") => {
+    setIptvPlaylistUrl(playlistUrl);
+    setIptvActiveCategory(category);
+    setIptvBackView(backView);
+    setTransitionProps({
+      title: "Fahim IPTV",
+      subtitle: playlistUrl ? "Opening Fahim FIFA Live Sports..." : "Loading your streaming experience...",
+      icon: Tv,
+      glowColor: "bg-blue-600/20",
+      iconBgColor: "bg-blue-500"
+    });
     setIsTransitioning(true);
     setTimeout(() => {
       setView("iptv");
       setIsTransitioning(false);
     }, 2500);
+  };
+
+  const handleLaunchFreelancing = () => {
+    setTransitionProps({
+      title: "Start Freelancing",
+      subtitle: "Initializing your freelancing workstation...",
+      icon: Briefcase,
+      glowColor: "bg-emerald-600/20",
+      iconBgColor: "bg-emerald-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("freelancing");
+      setIsTransitioning(false);
+    }, 1800);
+  };
+
+  const handleLaunchFifa = () => {
+    setTransitionProps({
+      title: "FIFA Match Center",
+      subtitle: "Connecting to FIFA 2026 World Cup Center...",
+      icon: Trophy,
+      glowColor: "bg-amber-600/20",
+      iconBgColor: "bg-amber-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("fifa");
+      setIsTransitioning(false);
+    }, 2000);
   };
 
   const handleCopyEmail = () => {
@@ -628,24 +832,31 @@ export default function App() {
     setApiToken(token);
   };
 
+  const isStablePage = view === "hero" || view === "tools";
+
   return (
-    <div className="relative min-h-screen flex flex-col font-sans overflow-x-hidden selection:bg-blue-500/30">
+    <div className={`flex flex-col font-sans selection:bg-blue-500/30 w-full relative ${
+      isStablePage ? "h-[100dvh] max-h-[100dvh] overflow-hidden" : "min-h-screen"
+    }`}>
       <BackgroundGlows />
       {view === "hero" && <SpiderWeb />}
-      <Header currentView={view} setView={setView} onContactClick={() => setIsContactOpen(true)} onCommunityClick={() => setIsCommunityOpen(true)} />
+      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && (
+        <Header currentView={view} setView={setView} onContactClick={() => setIsContactOpen(true)} onCommunityClick={() => setIsCommunityOpen(true)} />
+      )}
 
       <AnimatePresence mode="wait">
-        {isTransitioning && <LoadingScreen key="loader" />}
-        {view === "hero" ? (
+        {isTransitioning ? (
+          <LoadingScreen key="loader" {...transitionProps} />
+        ) : view === "hero" ? (
           <motion.main
             key="hero"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.6 }}
-            className="relative z-10 flex-grow flex flex-col items-center justify-center w-full h-[85vh] max-h-[90vh] sm:h-auto sm:max-h-none px-4 sm:px-6 text-center pt-20 sm:pt-28 pb-4 sm:pb-12 overflow-hidden"
+            className="relative z-10 flex-grow flex flex-col items-center justify-center w-full h-[100dvh] md:h-auto px-4 sm:px-6 text-center pt-[70px] md:pt-28 pb-4 md:pb-12 overflow-hidden"
           >
-            <div className="w-full max-w-4xl py-2 sm:py-20 flex flex-col items-center justify-center">
+            <div className="w-full max-w-4xl flex flex-col items-center justify-center py-4 md:py-20">
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -686,7 +897,7 @@ export default function App() {
               >
                 <button 
                   onClick={() => setView("tools")}
-                  className="group relative w-[80%] max-w-[280px] sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl bg-white text-black font-display font-black text-sm sm:text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
+                  className="group relative w-[80%] max-w-[280px] sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-gradient-to-r from-[#0084ff] to-[#007aff] hover:from-[#007aff] hover:to-[#006bdd] text-white font-display font-black text-sm sm:text-lg transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_6px_20px_rgba(0,122,255,0.4)] hover:shadow-[0_8px_25px_rgba(0,122,255,0.55)] border border-[#007aff]/20"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2 select-none">
                     Fahim’s All Tools
@@ -699,23 +910,23 @@ export default function App() {
         ) : view === "tools" ? (
           <motion.main
             key="tools"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.6 }}
-            className="relative z-10 flex-grow flex flex-col items-center px-4 sm:px-6 pt-24 sm:pt-32 pb-16 sm:pb-20 overflow-y-auto"
+            transition={{ duration: 0.5 }}
+            className="relative z-10 w-full h-[100dvh] pt-[75px] sm:pt-[92px] md:pt-[106px] pb-4 flex flex-col items-center justify-start overflow-hidden px-4"
           >
-            <div className="text-center mb-1.5 sm:mb-2 max-w-2xl select-none mt-2 sm:mt-0">
-              <h1 className="font-display text-2xl sm:text-4xl font-black text-white mb-1.5">
-                Fahim's All Tools
-              </h1>
-              <p className="text-white/45 text-xs sm:text-sm mb-6 sm:mb-8 max-w-sm sm:max-w-md mx-auto">
-                Explore my tools, platforms and projects.
-              </p>
+            <div className="shrink-0 mb-3 sm:mb-4 w-full">
+              <Filters active={category} onChange={setCategory} />
             </div>
-
-            <Filters active={category} onChange={setCategory} />
-            <ToolGrid activeCategory={category} handleLaunchIPTV={handleLaunchIPTV} />
+            <div className="flex-grow flex flex-col items-center justify-start min-h-0 w-full overflow-hidden pb-4">
+              <ToolGrid 
+                activeCategory={category} 
+                handleLaunchIPTV={handleLaunchIPTV} 
+                handleLaunchFreelancing={handleLaunchFreelancing}
+                handleLaunchFifa={handleLaunchFifa}
+              />
+            </div>
           </motion.main>
         ) : view === "iptv" ? (
           <motion.div 
@@ -723,9 +934,72 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100]"
+            className="w-full"
           >
-            <IPTVApp onBack={() => setView("tools")} />
+            <ErrorBoundary toolName="Fahim IPTV" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="Fahim IPTV" 
+                  subtitle="Loading your streaming experience..." 
+                  icon={Tv} 
+                  glowColor="bg-blue-600/20" 
+                  iconBgColor="bg-blue-500" 
+                />
+              }>
+                <IPTVApp 
+                  onBack={() => setView(iptvBackView)} 
+                  initialPlaylistUrl={iptvPlaylistUrl}
+                  initialActiveCategory={iptvActiveCategory}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "freelancing" ? (
+          <motion.div 
+            key="freelancing-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full min-h-screen"
+          >
+            <ErrorBoundary toolName="Start Freelancing" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="Start Freelancing" 
+                  subtitle="Initializing freelancing workstation..." 
+                  icon={Briefcase} 
+                  glowColor="bg-emerald-600/20" 
+                  iconBgColor="bg-emerald-500" 
+                />
+              }>
+                <FreelancingApp onBack={() => setView("tools")} />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "fifa" ? (
+          <motion.div 
+            key="fifa-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full"
+          >
+            <ErrorBoundary toolName="FIFA 2026 World Cup" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="FIFA Match Center" 
+                  subtitle="Connecting to Grand Match Center..." 
+                  icon={Trophy} 
+                  glowColor="bg-amber-600/20" 
+                  iconBgColor="bg-amber-500" 
+                />
+              }>
+                <FifaApp 
+                  onBack={() => setView("tools")} 
+                  onWatchLiveIPTV={(url, cat) => handleLaunchIPTV(url, cat, "fifa")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -747,7 +1021,7 @@ export default function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className="relative w-full max-w-sm bg-neutral-950/95 border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl z-10 overflow-hidden text-center select-none"
+              className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto no-scrollbar bg-neutral-950/95 border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl z-10 text-center select-none"
             >
               {/* Blue/indigo glows inside card */}
               <div className="absolute -top-12 -left-12 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
@@ -825,13 +1099,13 @@ export default function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className={`relative w-full ${isAuthed && activeTab === "admin" && auth.currentUser?.email === "fahimmuntasir12390@gmail.com" ? "max-w-2xl md:max-w-3xl" : "max-w-md"} bg-neutral-950/95 border border-indigo-500/20 rounded-3xl p-6 md:p-8 shadow-2xl z-10 overflow-hidden transition-all duration-300 text-center`}
+              className={`relative w-full ${isAuthed && activeTab === "admin" && auth.currentUser?.email === "fahimmuntasir12390@gmail.com" ? "max-w-2xl md:max-w-3xl" : "max-w-md"} max-h-[85vh] md:max-h-none flex flex-col bg-neutral-950/95 border border-indigo-500/20 rounded-3xl p-5 md:p-8 shadow-2xl z-10 overflow-hidden transition-all duration-300`}
             >
               {/* Blue/indigo/cyan glows inside card */}
               <div className="absolute -top-12 -left-12 w-32 h-32 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
               <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-cyan-600/10 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex justify-end absolute top-4 right-4">
+              <div className="flex justify-end absolute top-4 right-4 z-20">
                 <button
                   onClick={() => setIsCommunityOpen(false)}
                   className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-white/55 hover:text-white transition-colors active:scale-90"
@@ -840,14 +1114,15 @@ export default function App() {
                 </button>
               </div>
 
-              {!isAuthed ? (
-                <div className="select-none">
-                  <div className="w-11 h-11 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto mb-3 border border-indigo-500/25 animate-pulse">
-                    <Users className="w-5 h-5" />
-                  </div>
+              <div className="flex-grow overflow-y-auto no-scrollbar pr-0.5 space-y-1 text-center flex flex-col items-center">
+                {!isAuthed ? (
+                  <div className="select-none w-full flex flex-col items-center">
+                    <div className="w-11 h-11 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto mb-3 border border-indigo-500/25 animate-pulse shrink-0">
+                      <Users className="w-5 h-5" />
+                    </div>
 
-                  <h3 className="text-lg font-black text-white tracking-tight mb-1">Join Our Community</h3>
-                  <p className="text-white/45 text-xs mb-5 max-w-sm mx-auto leading-relaxed">
+                    <h3 className="text-lg font-black text-white tracking-tight mb-1">Join Our Community</h3>
+                    <p className="text-white/45 text-xs mb-5 max-w-sm mx-auto leading-relaxed">
                     Login or create an account below to unlock access to our Telegram, Discord, and secure downloads.
                   </p>
 
@@ -1243,6 +1518,7 @@ export default function App() {
                   </div>
                 </div>
               )}
+              </div>
             </motion.div>
           </motion.div>
         )}

@@ -9,6 +9,7 @@ interface Node {
   baseY: number;
   vx: number;
   vy: number;
+  neighbors?: number[];
 }
 
 interface Spider {
@@ -60,23 +61,129 @@ export function SpiderWeb() {
   const floatTextsRef = useRef<FloatText[]>([]);
   const scoreRef = useRef(0);
   const timeRef = useRef(0);
+  const connectionsRef = useRef<[number, number, boolean][]>([]);
 
-  // Responsive grid structure to make the web dense but perfectly sized
+  // Highly realistic, organic, hand-spun spider web generator
   const buildWeb = useCallback((W: number, H: number) => {
-    // Determine grid columns and rows based on viewport size. More columns = denser web
-    const isMobile = W < 768;
-    const cols = isMobile ? 12 : 20; // 20 columns on desktop makes it denser ("ghono")
-    const rows = isMobile ? 10 : 15; // 15 rows on desktop
     const nodes: Node[] = [];
+    const connections: [number, number, boolean][] = [];
 
-    for (let r = 0; r <= rows; r++) {
-      for (let c = 0; c <= cols; c++) {
-        const bx = (c / cols) * W;
-        const by = (r / rows) * H;
-        nodes.push({ x: bx, y: by, baseX: bx, baseY: by, vx: 0, vy: 0 });
+    const addNode = (x: number, y: number) => {
+      nodes.push({ x, y, baseX: x, baseY: y, vx: 0, vy: 0, neighbors: [] });
+      return nodes.length - 1;
+    };
+
+    const connect = (i1: number, i2: number, isDiagonal = false) => {
+      if (i1 < 0 || i2 < 0 || i1 >= nodes.length || i2 >= nodes.length) return;
+      
+      const exists = connections.some(
+        (c) => (c[0] === i1 && c[1] === i2) || (c[0] === i2 && c[1] === i1)
+      );
+      if (!exists) {
+        connections.push([i1, i2, isDiagonal]);
+        if (!nodes[i1].neighbors) nodes[i1].neighbors = [];
+        if (!nodes[i2].neighbors) nodes[i2].neighbors = [];
+        if (!nodes[i1].neighbors!.includes(i2)) nodes[i1].neighbors!.push(i2);
+        if (!nodes[i2].neighbors!.includes(i1)) nodes[i2].neighbors!.push(i1);
+      }
+    };
+
+    const outerNodesList: number[] = [];
+
+    const createOrganicWeb = (
+      cx: number,
+      cy: number,
+      startAngle: number,
+      endAngle: number,
+      numRays: number,
+      numRings: number,
+      maxRadius: number,
+      isTorn = false
+    ) => {
+      const rayAngles: number[] = [];
+      const angleStep = numRays > 1 ? (endAngle - startAngle) / (numRays - 1) : 0;
+
+      // 1. Create ray angles with random asymmetry and non-uniform angular spacing
+      for (let i = 0; i < numRays; i++) {
+        const noise = numRays > 1 ? (Math.random() - 0.5) * angleStep * 0.35 : 0;
+        rayAngles.push(startAngle + i * angleStep + noise);
+      }
+
+      const webNodes: number[][] = [];
+      for (let r = 0; r < numRays; r++) {
+        webNodes[r] = [];
+        const angle = rayAngles[r];
+
+        for (let ring = 0; ring < numRings; ring++) {
+          // Tension spacing: closer together near the origin, wider apart near the edges
+          const t = ring / (numRings - 1 || 1);
+          const spacing = Math.pow(t, 1.3); // non-uniform progression
+          const distance = spacing * maxRadius * (0.85 + Math.random() * 0.3);
+
+          const nx = cx + Math.cos(angle) * distance;
+          const ny = cy + Math.sin(angle) * distance;
+
+          const idx = addNode(nx, ny);
+          webNodes[r].push(idx);
+
+          // Track outer-ring nodes for cross-stretching structural lines
+          if (ring === numRings - 1) {
+            outerNodesList.push(idx);
+          }
+        }
+      }
+
+      // 2. Connect radial strands (lines going from center outward)
+      for (let r = 0; r < numRays; r++) {
+        for (let ring = 0; ring < numRings - 1; ring++) {
+          // Organic torn effect: random omissions of some outer structural radial segments
+          if (isTorn && ring > 2 && Math.random() < 0.12) {
+            continue;
+          }
+          connect(webNodes[r][ring], webNodes[r][ring + 1], false);
+        }
+      }
+
+      // 3. Connect concentric spiral strands (the circular segments)
+      for (let ring = 1; ring < numRings; ring++) {
+        for (let r = 0; r < numRays - 1; r++) {
+          // Skip concentric segments randomly to create realistic torn gaps
+          if (isTorn) {
+            const skipChance = 0.08 + (ring / numRings) * 0.28;
+            if (Math.random() < skipChance) continue;
+          }
+          connect(webNodes[r][ring], webNodes[r + 1][ring], true);
+        }
+      }
+    };
+
+    const baseSize = Math.min(W, H);
+
+    // Create 4 distinct asymmetric corner-attached webs of different densities and sizes
+    createOrganicWeb(0, 0, 0, Math.PI / 2, 7, 7, baseSize * 0.72, true); // Top-Left
+    createOrganicWeb(W, 0, Math.PI / 2, Math.PI, 6, 8, baseSize * 0.68, true); // Top-Right
+    createOrganicWeb(0, H, Math.PI * 1.5, Math.PI * 2, 8, 6, baseSize * 0.76, true); // Bottom-Left
+    createOrganicWeb(W, H, Math.PI, Math.PI * 1.5, 6, 7, baseSize * 0.64, true); // Bottom-Right
+
+    // Create 2 side/edge-anchored partial webs that look hand-spun
+    createOrganicWeb(0, H * 0.45, -Math.PI / 2.8, Math.PI / 2.8, 5, 5, baseSize * 0.44, true); // Left-Edge Anchor
+    createOrganicWeb(W, H * 0.55, Math.PI * 0.65, Math.PI * 1.35, 5, 5, baseSize * 0.44, true); // Right-Edge Anchor
+
+    // 4. Create stray/diagonal cross-stretching structural strands between distant parts of corners for high-fidelity realism
+    if (outerNodesList.length > 5) {
+      for (let i = 0; i < 6; i++) {
+        const u = outerNodesList[Math.floor(Math.random() * outerNodesList.length)];
+        const v = outerNodesList[Math.floor(Math.random() * outerNodesList.length)];
+        
+        const dist = Math.hypot(nodes[u].x - nodes[v].x, nodes[u].y - nodes[v].y);
+        // Ensure the lines span across gaps symmetrically/asymmetrically and look imperfect
+        if (dist > baseSize * 0.35 && u !== v) {
+          connect(u, v, true);
+        }
       }
     }
-    return { nodes, cols, rows };
+
+    return { nodes, connections };
   }, []);
 
   const spawnSpiders = useCallback((nodes: Node[], count = 6) => {
@@ -129,8 +236,9 @@ export function SpiderWeb() {
     canvas.width = W;
     canvas.height = H;
 
-    let { nodes, cols, rows } = buildWeb(W, H);
+    let { nodes, connections } = buildWeb(W, H);
     nodesRef.current = nodes;
+    connectionsRef.current = connections;
     
     // Spawn more spiders for desktop for visual richness
     const spiderCount = W < 768 ? 4 : 7;
@@ -142,9 +250,8 @@ export function SpiderWeb() {
       canvas.width = W;
       canvas.height = H;
       const setup = buildWeb(W, H);
-      cols = setup.cols;
-      rows = setup.rows;
       nodesRef.current = setup.nodes;
+      connectionsRef.current = setup.connections;
       spidersRef.current = spawnSpiders(nodesRef.current, W < 768 ? 4 : 7);
     };
 
@@ -290,132 +397,336 @@ export function SpiderWeb() {
       const { x, y, size, legPhase, legSpeed, isDead } = spider;
       const phase = legPhase + time * legSpeed;
 
+      // Realistic jointed spider renderer
+      const renderSingleSpider = (isShadow: boolean, isMainDead: boolean) => {
+        // Body segments layout
+        const headRadius = size * 0.42;
+        const headY = -size * 0.28;
+        const abdomenW = size * (isMainDead ? 0.76 : 0.64);
+        const abdomenH = size * (isMainDead ? 0.64 : 0.94);
+        const abdomenY = size * 0.48;
+
+        ctx.lineWidth = isMainDead ? 0.8 : (spider.isBoss ? 1.8 : 1.1);
+
+        // 1. Draw Chelicerae (Fangs) - attach at very front of head
+        if (!isShadow) {
+          ctx.strokeStyle = '#1e1b4b';
+          ctx.fillStyle = isMainDead ? '#31101b' : (spider.isBoss ? '#581c87' : '#1e1b4b');
+          [-1, 1].forEach((side) => {
+            ctx.beginPath();
+            const fangBaseX = side * headRadius * 0.4;
+            const fangBaseY = headY - headRadius * 0.8;
+            ctx.moveTo(fangBaseX, fangBaseY);
+            // Curved fangs
+            ctx.quadraticCurveTo(
+              fangBaseX + side * size * 0.15,
+              fangBaseY - size * 0.25,
+              fangBaseX + side * size * 0.05,
+              fangBaseY - size * 0.45
+            );
+            ctx.quadraticCurveTo(
+              fangBaseX - side * size * 0.05,
+              fangBaseY - size * 0.22,
+              fangBaseX,
+              fangBaseY
+            );
+            ctx.fill();
+            ctx.stroke();
+
+            // Fang tip glow (poison drop / sharp barb)
+            if (!isMainDead) {
+              ctx.fillStyle = spider.isBoss ? '#f43f5e' : '#10b981';
+              ctx.beginPath();
+              ctx.arc(fangBaseX + side * size * 0.05, fangBaseY - size * 0.45, size * 0.06, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+        }
+
+        // 2. Draw Pedipalps (front sensory feelers) - attach to front of head
+        [-1, 1].forEach((side) => {
+          ctx.beginPath();
+          const basePalpX = side * headRadius * 0.45;
+          const basePalpY = headY - headRadius * 0.7;
+
+          // Gentle palp wiggling if alive. Antiphase feeler movement
+          const palpWiggle = isMainDead ? 0 : Math.sin(phase * 1.5 + side) * 0.16;
+          
+          // Palps contain 2 small jointed segments extending forward
+          const pAngle1 = -Math.PI / 2 + side * 0.25 + palpWiggle;
+          const px1 = basePalpX + Math.cos(pAngle1) * (size * 0.38);
+          const py1 = basePalpY + Math.sin(pAngle1) * (size * 0.38);
+
+          const pAngle2 = pAngle1 - side * 0.38 + palpWiggle * 0.5;
+          const px2 = px1 + Math.cos(pAngle2) * (size * 0.32);
+          const py2 = py1 + Math.sin(pAngle2) * (size * 0.32);
+
+          ctx.strokeStyle = isShadow 
+            ? 'rgba(0,0,0,0.6)' 
+            : (isMainDead ? 'rgba(244, 63, 94, 0.5)' : (spider.isBoss ? '#7f1d1d' : '#312e81'));
+          ctx.moveTo(basePalpX, basePalpY);
+          ctx.lineTo(px1, py1);
+          ctx.lineTo(px2, py2);
+          ctx.stroke();
+        });
+
+        // 3. Draw 8 jointed walking legs attaching to cephalothorax (head segment)
+        // Authentic coordinate separation for four distinct leg slots on the thorax plate
+        const activeLegPairs = [
+          { baseOffsetY: headY + headRadius * 0.35, outAngle: -0.62, targetAngle: -0.85, len: size * 2.3, id: 0 },
+          { baseOffsetY: headY + headRadius * 0.65, outAngle: -0.15, targetAngle: -0.28, len: size * 2.5, id: 1 },
+          { baseOffsetY: headY + headRadius * 0.95, outAngle: 0.18, targetAngle: 0.32, len: size * 2.5, id: 2 },
+          { baseOffsetY: headY + headRadius * 1.25, outAngle: 0.68, targetAngle: 0.95, len: size * 2.2, id: 3 },
+        ];
+
+        ctx.strokeStyle = isShadow
+          ? 'rgba(0,0,0,0.65)'
+          : (isMainDead 
+              ? 'rgba(244, 63, 94, 0.7)' 
+              : (spider.isBoss ? 'rgba(239, 68, 68, 0.95)' : 'rgba(129, 140, 248, 0.85)'));
+
+        activeLegPairs.forEach((pair) => {
+          [-1, 1].forEach((side) => {
+            const baseAngle = pair.outAngle * side + (side > 0 ? 0 : Math.PI);
+            
+            // Alternating tripod locomotion gait animation for realistic fluid spider crawling
+            // Alive spider: odd legs (0, 2) move opposite to even legs (1, 3)
+            const legPhaseOffset = pair.id % 2 === 0 ? 0 : Math.PI;
+            const wiggleAmount = isMainDead 
+              ? 0 
+              : Math.sin(phase + legPhaseOffset) * 0.32 * side;
+            
+            const jointAngle1 = baseAngle + wiggleAmount;
+
+            // Leg origins attach to head/breast plate (cephalothorax)
+            const lax0 = side * headRadius * 0.35;
+            const lay0 = pair.baseOffsetY;
+
+            // Joint 1: Coxa/Femur extending out and up
+            const femurLen = pair.len * 0.42;
+            const lax1 = lax0 + Math.cos(jointAngle1) * femurLen;
+            const lay1 = lay0 + Math.sin(jointAngle1) * femurLen;
+
+            // Joint 2: Tibia bending sharply downwards & outward
+            const tibiaAngle = jointAngle1 + (side > 0 ? 0.75 : -0.75) + (isMainDead ? (pair.id * 0.2 * side) : wiggleAmount * 0.4);
+            const tibiaLen = pair.len * 0.40;
+            const lax2 = lax1 + Math.cos(tibiaAngle) * tibiaLen;
+            const lay2 = lay1 + Math.sin(tibiaAngle) * tibiaLen;
+
+            // Joint 3: Metatarsus/Tarsus tip bending straight down to grip lines/surfaces
+            const tarsusAngle = tibiaAngle + (side > 0 ? 0.55 : -0.55) + (isMainDead ? 0.4 * side : 0);
+            const tarsusLen = pair.len * 0.22;
+            const lax3 = lax2 + Math.cos(tarsusAngle) * tarsusLen;
+            const lay3 = lay2 + Math.sin(tarsusAngle) * tarsusLen;
+
+            // In death, legs curl inwards and look rigid
+            if (isMainDead) {
+              // Curled back toward the body
+              const deadAngle = baseAngle + (side > 0 ? -1.0 : 1.0);
+              const dcx1 = lax0 + Math.cos(deadAngle) * (pair.len * 0.32);
+              const dcy1 = lay0 + Math.sin(deadAngle) * (pair.len * 0.32);
+              const dcx2 = dcx1 + Math.cos(deadAngle + (side > 0 ? -1.1 : 1.1)) * (pair.len * 0.28);
+              const dcy2 = dcy1 + Math.sin(deadAngle + (side > 0 ? -1.1 : 1.1)) * (pair.len * 0.28);
+              const dcx3 = dcx2 + Math.cos(deadAngle + (side > 0 ? -1.8 : 1.8)) * (pair.len * 0.18);
+              const dcy3 = dcy2 + Math.sin(deadAngle + (side > 0 ? -1.8 : 1.8)) * (pair.len * 0.18);
+              
+              ctx.beginPath();
+              ctx.moveTo(lax0, lay0);
+              ctx.lineTo(dcx1, dcy1);
+              ctx.lineTo(dcx2, dcy2);
+              ctx.lineTo(dcx3, dcy3);
+              ctx.stroke();
+            } else {
+              // Smooth segmented path drawing for jointed legs
+              ctx.beginPath();
+              ctx.moveTo(lax0, lay0);
+              ctx.lineTo(lax1, lay1);
+              ctx.lineTo(lax2, lay2);
+              ctx.lineTo(lax3, lay3);
+              ctx.stroke();
+            }
+          });
+        });
+
+        // 4. Pedicel (The tiny narrow waist connecting head and abdomen)
+        if (isShadow) {
+          ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        } else {
+          ctx.fillStyle = isMainDead ? '#31101b' : (spider.isBoss ? '#450a0a' : '#1e1b4b');
+        }
+        ctx.beginPath();
+        ctx.ellipse(0, headY + headRadius * 1.1, size * 0.15, size * 0.15, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 5. Abdomen (Rear larger plate)
+        let abdomenGrad;
+        if (isShadow) {
+          ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        } else {
+          abdomenGrad = ctx.createRadialGradient(0, abdomenY, 0, 0, abdomenY, abdomenW * 1.2);
+          if (isMainDead) {
+            abdomenGrad.addColorStop(0, '#f43f5e'); // red death colors
+            abdomenGrad.addColorStop(1, '#881337');
+          } else if (spider.isBoss) {
+            abdomenGrad.addColorStop(0, '#ef4444'); // boss red hot core
+            abdomenGrad.addColorStop(1, '#450a0a'); // deep rich charcoal crimson
+          } else {
+            abdomenGrad.addColorStop(0, '#6366f1'); // sapphire indigo core
+            abdomenGrad.addColorStop(1, '#1e1b4b'); // deep midnight violet
+          }
+          ctx.fillStyle = abdomenGrad;
+        }
+
+        ctx.beginPath();
+        ctx.ellipse(0, abdomenY, abdomenW, abdomenH, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 5b. Authentic Abdomen Markings (Tiger-stripes, chevron patterns, and glowing warning hourglass)
+        if (!isShadow) {
+          ctx.save();
+          // Clip markings to the abdomen ellipse to maintain perfectly clean borders
+          ctx.beginPath();
+          ctx.ellipse(0, abdomenY, abdomenW, abdomenH, 0, 0, Math.PI * 2);
+          ctx.clip();
+
+          // Draw spider chevron/stripe texture
+          ctx.strokeStyle = isMainDead 
+            ? 'rgba(255,255,255,0.18)' 
+            : (spider.isBoss ? 'rgba(239,68,68,0.7)' : 'rgba(129,140,248,0.55)');
+          ctx.lineWidth = 1.8;
+          
+          // concentric V-chevrons down the abdomen
+          for (let dy = -0.5; dy <= 0.6; dy += 0.28) {
+            ctx.beginPath();
+            const strokeY = abdomenY + dy * abdomenH;
+            ctx.moveTo(-abdomenW * 0.65, strokeY - abdomenH * 0.15);
+            ctx.lineTo(0, strokeY + abdomenH * 0.08);
+            ctx.lineTo(abdomenW * 0.65, strokeY - abdomenH * 0.15);
+            ctx.stroke();
+          }
+
+          // Special marking: Black Widow Hourglass/Skull pattern on Boss back, elegant stripe on standard
+          if (spider.isBoss) {
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath();
+            // Hourglass drawing
+            ctx.moveTo(-size * 0.18, abdomenY - size * 0.24);
+            ctx.lineTo(size * 0.18, abdomenY - size * 0.24);
+            ctx.lineTo(-size * 0.04, abdomenY + size * 0.08);
+            ctx.lineTo(size * 0.04, abdomenY + size * 0.08);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(-size * 0.04, abdomenY + size * 0.08);
+            ctx.lineTo(size * 0.04, abdomenY + size * 0.08);
+            ctx.lineTo(-size * 0.22, abdomenY + size * 0.42);
+            ctx.lineTo(size * 0.22, abdomenY + size * 0.42);
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            // Standard vertical neon vein
+            ctx.fillStyle = '#818cf8';
+            ctx.beginPath();
+            ctx.ellipse(0, abdomenY, size * 0.05, abdomenH * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // 6. Cephalothorax (Head/Breast section)
+        let headGrad;
+        if (isShadow) {
+          ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        } else {
+          headGrad = ctx.createRadialGradient(0, headY, 0, 0, headY, headRadius * 1.15);
+          if (isMainDead) {
+            headGrad.addColorStop(0, '#f97316'); // orange-red death cephalothorax
+            headGrad.addColorStop(1, '#5c1d0c');
+          } else if (spider.isBoss) {
+            headGrad.addColorStop(0, '#ef4444');
+            headGrad.addColorStop(1, '#7f1d1d');
+          } else {
+            headGrad.addColorStop(0, '#818cf8');
+            headGrad.addColorStop(1, '#312e81');
+          }
+          ctx.fillStyle = headGrad;
+        }
+
+        ctx.beginPath();
+        ctx.ellipse(0, headY, headRadius, headRadius * 0.95, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 7. Multi-Eye Clustered Arrangement (8 glowing eyes)
+        if (!isShadow) {
+          // Front AME (Anterior Median Eyes) are massive and look shiny
+          const frontEyes = [-0.18, 0.18];
+          frontEyes.forEach((ex) => {
+            ctx.fillStyle = isMainDead 
+              ? '#5c1d0c' 
+              : (spider.isBoss ? '#f43f5e' : '#22d3ee'); // bright glowing core color
+            ctx.beginPath();
+            ctx.arc(ex * size, headY - headRadius * 0.35, size * 0.11, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Specular shiny glare reflection point on front eyes
+            if (!isMainDead) {
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(ex * size + size * 0.03, headY - headRadius * 0.4, size * 0.045, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+
+          // Side micro-eyes (Rear Lateral, Anterior Lateral - 4 additional smaller glowing beads)
+          const sideEyes = [
+            { x: -0.32, y: -0.21, r: 0.055 },
+            { x: 0.32, y: -0.21, r: 0.055 },
+            { x: -0.38, y: -0.05, r: 0.045 },
+            { x: 0.38, y: -0.05, r: 0.045 }
+          ];
+          sideEyes.forEach((eye) => {
+            ctx.fillStyle = isMainDead 
+              ? '#4c0519' 
+              : (spider.isBoss ? '#ef4444' : '#67e8f9');
+            ctx.beginPath();
+            ctx.arc(eye.x * size, headY + eye.y * size, eye.r * size, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+      };
+
       ctx.save();
       ctx.translate(x, y);
 
-      // Spin a bit if dead for cool physics effect
+      // Gentle spatial breathing pulsation to make them feel alive and biological
+      const breatheScale = isDead ? 1.0 : 1.0 + Math.sin(time * 0.1) * 0.03;
+      ctx.scale(breatheScale, breatheScale);
+
+      // Rotate if falling or deceased
       if (isDead) {
-        ctx.rotate((time * 0.05) % (Math.PI * 2));
+        ctx.rotate((time * 0.035) % (Math.PI * 2));
       }
 
-      // Body glow effect
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2.2);
-      if (isDead) {
-        grad.addColorStop(0, 'rgba(244, 63, 94, 0.25)'); // Rose glow if dead
-        grad.addColorStop(1, 'rgba(244, 63, 94, 0)');
-      } else if (spider.isBoss) {
-        grad.addColorStop(0, 'rgba(239, 68, 68, 0.35)'); // Red glow for Red Boss!
-        grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-      } else {
-        grad.addColorStop(0, 'rgba(129, 140, 248, 0.25)'); // Indigo-blue glow for normal
-        grad.addColorStop(1, 'rgba(129, 140, 248, 0)');
-      }
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
-      ctx.fill();
+      // Draw 3D Drop Shadow offset slightly down-right to elevate spider over the web
+      ctx.save();
+      ctx.translate(size * 0.32, size * 0.45); // high shift
+      renderSingleSpider(true, isDead);
+      ctx.restore();
 
-      // Legs — 8 legs in 4 pairs
-      // If dead, legs curl up tightly (invert their angles and shrink key leg lengths)
-      const legPairs = isDead ? [
-        { angle: -1.2, length: size * 1.3 },
-        { angle: -0.9, length: size * 1.5 },
-        { angle: 0.9, length: size * 1.5 },
-        { angle: 1.2, length: size * 1.3 },
-      ] : [
-        { angle: -0.6, length: size * 2.3 },
-        { angle: -0.25, length: size * 2.6 },
-        { angle: 0.25, length: size * 2.6 },
-        { angle: 0.6, length: size * 2.3 },
-      ];
-
-      ctx.strokeStyle = isDead 
-        ? 'rgba(244, 63, 94, 0.65)' 
-        : (spider.isBoss ? 'rgba(239, 68, 68, 0.95)' : 'rgba(129, 140, 248, 0.8)');
-      ctx.lineWidth = isDead ? 0.8 : (spider.isBoss ? 1.6 : 1.0);
-
-      legPairs.forEach((pair, i) => {
-        [-1, 1].forEach((side) => {
-          const baseAngle = pair.angle * side + (side > 0 ? 0 : Math.PI);
-          // Don't wiggle legs if dead, just static curl
-          const wiggle = isDead ? 0 : Math.sin(phase + i * 0.8) * 0.22 * side;
-          const a1 = baseAngle + wiggle;
-          const mid = size * 1.2;
-          const mx = Math.cos(a1) * mid;
-          const my = Math.sin(a1) * mid;
-          const a2 = a1 + (side > 0 ? 0.45 : -0.45) + wiggle * 0.4;
-          const ex = mx + Math.cos(a2) * (pair.length - mid);
-          const ey = my + Math.sin(a2) * (pair.length - mid);
-
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.quadraticCurveTo(mx, my, ex, ey);
-          ctx.stroke();
-        });
-      });
-
-      // Abdomen (rear)
-      const abdomenGrad = ctx.createRadialGradient(0, size * 0.4, 0, 0, size * 0.4, size * 0.95);
-      if (isDead) {
-        abdomenGrad.addColorStop(0, '#f42f56'); // Rose splat red
-        abdomenGrad.addColorStop(1, '#880e22');
-      } else if (spider.isBoss) {
-        abdomenGrad.addColorStop(0, '#f87171'); // Boss red-400
-        abdomenGrad.addColorStop(1, '#991b1b'); // Boss deep red-800
-      } else {
-        abdomenGrad.addColorStop(0, '#818cf8'); // Indigo-400
-        abdomenGrad.addColorStop(1, '#4f46e5'); // Indigo-600
-      }
-      ctx.fillStyle = abdomenGrad;
-      ctx.beginPath();
-      // Squish abdomen if dead
-      ctx.ellipse(0, size * 0.4, size * (isDead ? 0.75 : 0.6), size * (isDead ? 0.65 : 0.85), 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cephalothorax (head)
-      const headGrad = ctx.createRadialGradient(0, -size * 0.2, 0, 0, -size * 0.2, size * 0.55);
-      if (isDead) {
-        headGrad.addColorStop(0, '#fda4af');
-        headGrad.addColorStop(1, '#4c0519');
-      } else if (spider.isBoss) {
-        headGrad.addColorStop(0, '#fca5a5'); // Red-300
-        headGrad.addColorStop(1, '#450a0a'); // Red-950
-      } else {
-        headGrad.addColorStop(0, '#a5b4fc'); // Indigo-300
-        headGrad.addColorStop(1, '#312e81'); // Indigo-950
-      }
-      ctx.fillStyle = headGrad;
-      ctx.beginPath();
-      ctx.ellipse(0, -size * 0.2, size * (isDead ? 0.55 : 0.45), size * (isDead ? 0.45 : 0.5), 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Glowing eyes
-      const eyePositions = [-0.18, 0.18];
-      eyePositions.forEach((ex) => {
-        ctx.fillStyle = isDead 
-          ? '#4c0519' 
-          : (spider.isBoss ? '#f43f5e' : '#67e8f9'); // red eyes for Boss, cyan for normal
-        ctx.beginPath();
-        ctx.arc(ex * size, -size * 0.35, size * 0.12, 0, Math.PI * 2);
-        ctx.fill();
-        if (!isDead) {
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(ex * size + size * 0.03, -size * 0.37, size * 0.05, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
+      // Draw actual primary colorful textured spider
+      renderSingleSpider(false, isDead);
 
       // Simple HUD style Health Bar above boss spider's head
       if (spider.isBoss && !isDead && spider.hp !== undefined && spider.maxHp !== undefined) {
-        const barW = size * 2.0;
-        const barH = 4;
+        const barW = size * 2.1;
+        const barH = 4.2;
         const barX = -barW / 2;
-        const barY = -size * 1.3;
+        const barY = -size * 1.4;
 
         // Draw background container
-        ctx.fillStyle = 'rgba(15, 10, 15, 0.85)';
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        ctx.fillStyle = 'rgba(15, 10, 15, 0.9)';
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.rect(barX, barY, barW, barH);
@@ -443,136 +754,80 @@ export function SpiderWeb() {
       const centerY = H / 2;
       const isMobile = W < 768;
       // Ellipse bounds to clear the central title text, hacker text, CTA button
-      const radiusX = isMobile ? W * 0.44 : 350; // clear a fixed width on desktop or 44% on mobile
-      const radiusY = isMobile ? H * 0.32 : 220; // clear a fixed height on desktop or 32% on mobile
+      const radiusX = isMobile ? W * 0.44 : 350; 
+      const radiusY = isMobile ? H * 0.32 : 220; 
 
-      // Reset shadows by default to avoid persistent GPU performance penalties
       ctx.shadowBlur = 0;
 
-      // Beautiful hardware-accelerated dual-stroke rendering helper for optimal performance
-      const drawSegment = (
-        ax: number,
-        ay: number,
-        bx: number,
-        by: number,
-        width: number,
-        alpha: number,
-        glow: number,
-        isDiagonal = false
-      ) => {
+      // Draw each organic web segment with realistic gravity sag, wind-sway, and tension
+      connectionsRef.current.forEach(([u, v, isDiagonal]) => {
+        const a = nodes[u];
+        const b = nodes[v];
+        if (!a || !b) return;
+
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        
+        // Fading out near the center keeps the user content fully legible
+        const distToCenter = Math.hypot((midX - centerX) / radiusX, (midY - centerY) / radiusY);
+        const centerFade = Math.min(1, Math.max(0, (distToCenter - 0.5) / 0.5));
+        if (centerFade === 0) return;
+
+        const distToMouse = Math.hypot(
+          midX - mouseRef.current.x,
+          midY - mouseRef.current.y
+        );
+        const glow = Math.max(0, 1 - distToMouse / (isMobile ? 120 : 190));
+        const alpha = (0.32 + glow * 0.5) * centerFade;
+        const width = (0.75 + glow * 1.0) * centerFade;
+
         if (alpha <= 0.05) return;
 
-        // On mobile, or when there is no direct mouse hover proximity (glow <= 0.15),
-        // we use a double-layered stroke to simulate glows. This bypasses the extremely slow shadowBlur parser.
-        // On desktop with direct hover interaction, we selectively enable authentic shadowBlur.
+        // Realistic gravity tension sag and natural wind/vibration sway
+        const timeFactor = timeRef.current * 0.015; // slow organic wave flow
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        
+        // Longer threads sag more under gravity
+        const sagAmount = len * 0.065 + 1.2; 
+        
+        // Gentle wind vibration/organic sway
+        const windX = Math.sin(timeFactor + (a.x + b.x) * 0.003) * 2.2;
+        const windY = (Math.cos(timeFactor * 0.85 + (a.y + b.y) * 0.003) + 0.35) * 2.8;
+
+        const controlX = midX + windX;
+        const controlY = midY + sagAmount + windY;
+
+        // Rendering double-line glow strokes to resemble macro-photography of thin glowing silk
         if (glow > 0.15 && !isMobile) {
           ctx.beginPath();
-          ctx.moveTo(ax, ay);
-          ctx.lineTo(bx, by);
-          ctx.shadowBlur = isDiagonal ? (5 + glow * 10) : (10 + glow * 15);
-          ctx.shadowColor = `rgba(129, 140, 248, ${glow * (isDiagonal ? 0.7 : 0.95) * (alpha / (0.35 + glow * 0.5))})`;
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
+          ctx.shadowBlur = isDiagonal ? (4 + glow * 8) : (8 + glow * 12);
+          ctx.shadowColor = `rgba(129, 140, 248, ${glow * (isDiagonal ? 0.6 : 0.85) * (alpha / (0.35 + glow * 0.5))})`;
           ctx.strokeStyle = isDiagonal ? `rgba(99, 102, 241, ${alpha})` : `rgba(129, 140, 248, ${alpha})`;
           ctx.lineWidth = width;
           ctx.stroke();
-          // Reset shadow config
           ctx.shadowBlur = 0;
         } else {
-          // Inner glowing neon line (drawn first as a wide semi-transparent buffer)
+          // Inner glowing backing line
           ctx.beginPath();
-          ctx.moveTo(ax, ay);
-          ctx.lineTo(bx, by);
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
           ctx.strokeStyle = isDiagonal 
-            ? `rgba(99, 102, 241, ${alpha * 0.22})` 
-            : `rgba(129, 140, 248, ${alpha * 0.26})`;
-          ctx.lineWidth = width * (isDiagonal ? 3.0 : 3.5);
+            ? `rgba(99, 102, 241, ${alpha * 0.2})` 
+            : `rgba(129, 140, 248, ${alpha * 0.24})`;
+          ctx.lineWidth = width * (isDiagonal ? 2.8 : 3.2);
           ctx.stroke();
 
-          // Core sharp web strand line on top
+          // Central sharp glowing silk strand
           ctx.beginPath();
-          ctx.moveTo(ax, ay);
-          ctx.lineTo(bx, by);
-          ctx.strokeStyle = isDiagonal ? `rgba(99, 102, 241, ${alpha})` : `rgba(129, 140, 248, ${alpha})`;
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
+          ctx.strokeStyle = isDiagonal ? `rgba(110, 115, 244, ${alpha})` : `rgba(135, 145, 248, ${alpha})`;
           ctx.lineWidth = width;
           ctx.stroke();
         }
-      };
-
-      // Horizontal lines
-      for (let r = 0; r <= rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const a = nodes[r * (cols + 1) + c];
-          const b = nodes[r * (cols + 1) + c + 1];
-          if (!a || !b) continue;
-
-          const midX = (a.x + b.x) / 2;
-          const midY = (a.y + b.y) / 2;
-          const distToCenter = Math.hypot((midX - centerX) / radiusX, (midY - centerY) / radiusY);
-          const centerFade = Math.min(1, Math.max(0, (distToCenter - 0.5) / 0.5));
-          if (centerFade === 0) continue;
-
-          const distToMouse = Math.hypot(
-            midX - mouseRef.current.x,
-            midY - mouseRef.current.y
-          );
-          const glow = Math.max(0, 1 - distToMouse / 220);
-          const alpha = (0.35 + glow * 0.5) * centerFade;
-          const width = (0.85 + glow * 1.2) * centerFade;
-
-          drawSegment(a.x, a.y, b.x, b.y, width, alpha, glow, false);
-        }
-      }
-
-      // Vertical lines
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c <= cols; c++) {
-          const a = nodes[r * (cols + 1) + c];
-          const b = nodes[(r + 1) * (cols + 1) + c];
-          if (!a || !b) continue;
-
-          const midX = (a.x + b.x) / 2;
-          const midY = (a.y + b.y) / 2;
-          const distToCenter = Math.hypot((midX - centerX) / radiusX, (midY - centerY) / radiusY);
-          const centerFade = Math.min(1, Math.max(0, (distToCenter - 0.5) / 0.5));
-          if (centerFade === 0) continue;
-
-          const distToMouse = Math.hypot(
-            midX - mouseRef.current.x,
-            midY - mouseRef.current.y
-          );
-          const glow = Math.max(0, 1 - distToMouse / 220);
-          const alpha = (0.35 + glow * 0.5) * centerFade;
-          const width = (0.85 + glow * 1.2) * centerFade;
-
-          drawSegment(a.x, a.y, b.x, b.y, width, alpha, glow, false);
-        }
-      }
-
-      // Diagonal cross threads for proper spiderweb spiral feel
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const a = nodes[r * (cols + 1) + c];
-          const d = nodes[(r + 1) * (cols + 1) + c + 1];
-          if (!a || !d) continue;
-
-          const midX = (a.x + d.x) / 2;
-          const midY = (a.y + d.y) / 2;
-          const distToCenter = Math.hypot((midX - centerX) / radiusX, (midY - centerY) / radiusY);
-          const centerFade = Math.min(1, Math.max(0, (distToCenter - 0.5) / 0.5));
-          if (centerFade === 0) continue;
-
-          const distToMouse = Math.hypot(
-            midX - mouseRef.current.x,
-            midY - mouseRef.current.y
-          );
-          const glow = Math.max(0, 1 - distToMouse / 180);
-          const alpha = (0.22 + glow * 0.35) * centerFade;
-          const width = (0.55 + glow * 0.8) * centerFade;
-
-          drawSegment(a.x, a.y, d.x, d.y, width, alpha, glow, true);
-        }
-      }
-
-      ctx.shadowBlur = 0;
+      });
     }
 
     function updateNodes(nodes: Node[], mouse: { x: number; y: number }, W: number, H: number) {
@@ -620,12 +875,11 @@ export function SpiderWeb() {
           const timeSinceDeath = now - (spider.deathTime || 0);
 
           if (timeSinceDeath > 2200 || spider.y > H + 50) {
-            // Respawn at a random border node!
+            // Respawn at any of the outer anchor nodes (border proximity)
             const outerIndices: number[] = [];
             for (let i = 0; i < nodes.length; i++) {
-              const r = Math.floor(i / (cols + 1));
-              const c = i % (cols + 1);
-              if (r === 0 || r === rows || c === 0 || c === cols) {
+              const node = nodes[i];
+              if (node.x < 35 || node.y < 35 || node.x > W - 35 || node.y > H - 35) {
                 outerIndices.push(i);
               }
             }
@@ -666,12 +920,7 @@ export function SpiderWeb() {
 
         if (dist < 2.5) {
           const ni = spider.nodeIndex;
-          const neighborCandidates = [
-            ni - 1, ni + 1,
-            ni - (cols + 1), ni + (cols + 1),
-            ni - (cols + 1) - 1, ni - (cols + 1) + 1,
-            ni + (cols + 1) - 1, ni + (cols + 1) + 1,
-          ].filter((i) => i >= 0 && i < nodes.length);
+          const neighborCandidates = nodes[ni]?.neighbors || [];
 
           if (neighborCandidates.length > 0) {
             const newNi = neighborCandidates[Math.floor(Math.random() * neighborCandidates.length)];

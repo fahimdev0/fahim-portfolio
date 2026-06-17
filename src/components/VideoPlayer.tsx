@@ -150,16 +150,28 @@ export const VideoPlayer = ({ url, poster, onPlay }: VideoPlayerProps) => {
     }
 
     return () => {
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("waiting", handleWaiting);
-      video.removeEventListener("playing", handlePlaying);
-      video.removeEventListener("play", handlePlaying);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("error", handleError);
-      if (hls) {
-        hls.destroy();
-        hlsRef.current = null;
+      try {
+        video.removeEventListener("canplay", handleCanPlay);
+        video.removeEventListener("waiting", handleWaiting);
+        video.removeEventListener("playing", handlePlaying);
+        video.removeEventListener("play", handlePlaying);
+        video.removeEventListener("pause", handlePause);
+        video.removeEventListener("ended", handleEnded);
+        video.removeEventListener("error", handleError);
+        
+        video.pause();
+        
+        if (hls) {
+          hls.detachMedia();
+          hls.destroy();
+          hlsRef.current = null;
+        }
+        
+        video.src = "";
+        video.removeAttribute("src");
+        video.load();
+      } catch (err) {
+        console.warn("VideoPlayer cleanup warning:", err);
       }
     };
   }, [url]);
