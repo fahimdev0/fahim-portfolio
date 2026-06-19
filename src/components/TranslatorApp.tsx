@@ -32,6 +32,9 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Backend API /api/translate not found (Status 404). If you are deploying on a static host (like GitHub Pages or basic Vercel static), serverless functions may not be active. Please ensure you upload the complete zip including root /api/ directory, or deploy to a container target like Cloud Run / self-hosted Node server.");
+        }
         if (response.status === 525 || response.status === 503) {
           throw new Error("API server is currently offline or unreachable. Please check the backend proxy.");
         }

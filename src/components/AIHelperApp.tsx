@@ -81,6 +81,9 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
           const raw = await response.text();
           errorData = JSON.parse(raw);
         } catch {
+          if (response.status === 404) {
+            throw new Error("Backend API /api/chat not found (Status 404). If you are deploying on a static host (like GitHub Pages/Vercel static), serverless functions might not be running. Ensure that you have loaded the root /api/ folder or deployed to full-stack Node environments.");
+          }
           throw new Error(`API returned error: ${response.status}`);
         }
         throw new Error(errorData?.error?.message || errorData?.error || `API returned error: ${response.status}`);
