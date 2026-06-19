@@ -114,7 +114,7 @@ export const FifaApp = ({ onBack, onWatchLiveIPTV }: FifaAppProps) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(getCorsSafeUrl("https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/fifa.m3u"));
+        const response = await fetch(getCorsSafeUrl("https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/fifa.m3u"));
         if (!response.ok) throw new Error("CORS restricted or source server is offline");
         const m3uText = await response.text();
         const parsed = parseM3U(m3uText);

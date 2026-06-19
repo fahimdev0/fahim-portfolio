@@ -330,19 +330,19 @@ const ChannelCard = React.memo(({
 const PLAYLISTS_PRESETS = [
   { 
     name: "🏆 Fahim Sports Premium (240+ Channels)", 
-    url: "https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/sports.m3u" 
+    url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/sports.m3u" 
   },
   { 
     name: "🇧🇩 Fahim Bangla Live (100+ Channels)", 
-    url: "https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/bangla.m3u" 
+    url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/bangla.m3u" 
   },
   { 
     name: "🌍 Fahim Global Universal (7500+ Channels)", 
-    url: "https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/channels.m3u" 
+    url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/channels.m3u" 
   },
   { 
     name: "⚽ Fahim FIFA Live Sports (7 Channels)", 
-    url: "https://raw.githubusercontent.com/SHAJON-404/iptv/refs/heads/main/app/data/fifa.m3u" 
+    url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/fifa.m3u" 
   },
   { 
     name: "BD Tech Expert (Bangla & Sports Live)", 

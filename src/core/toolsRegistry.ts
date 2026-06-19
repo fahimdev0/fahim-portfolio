@@ -1,6 +1,7 @@
-import { LucideIcon, Tv, Briefcase, Shield, Cpu, Zap, Eye, Terminal, Sparkles, Sliders, Trophy } from "lucide-react";
+import { LucideIcon, Tv, Briefcase, Shield, Cpu, Zap, Eye, Terminal, Sparkles, Sliders, Trophy, Languages } from "lucide-react";
 
 export type RegistryToolCategory =
+  | "AI"
   | "Streaming"
   | "Security"
   | "Utilities"
@@ -23,6 +24,7 @@ export interface RegisteredTool {
 }
 
 export const TOOL_CATEGORIES: RegistryToolCategory[] = [
+  "AI",
   "Streaming",
   "Security",
   "Utilities",
@@ -31,6 +33,19 @@ export const TOOL_CATEGORIES: RegistryToolCategory[] = [
 ];
 
 export const TOOL_REGISTRY: RegisteredTool[] = [
+  {
+    id: "fahim-ai-helper",
+    name: "Fahim AI Helper",
+    route: "ai-helper",
+    category: "AI",
+    version: "v1.0",
+    status: "Live",
+    description: "DeepSeek Powered AI Assistant. Chat, generate code, and answer any questions in real-time.",
+    icon: Sparkles,
+    actionText: "Chat",
+    glowColor: "bg-blue-600/20",
+    iconBgColor: "bg-blue-500"
+  },
   {
     id: "fifa-2026",
     name: "FIFA World Cup 2026™",
@@ -43,6 +58,19 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
     actionText: "Launch",
     glowColor: "bg-amber-500/20",
     iconBgColor: "bg-amber-500"
+  },
+  {
+    id: "fahim-translator",
+    name: "Fahim Translator",
+    route: "translator",
+    category: "AI",
+    version: "v1.0",
+    status: "Live",
+    description: "High-precision multilingual translation and communication engine.",
+    icon: Languages,
+    actionText: "Translate",
+    glowColor: "bg-purple-600/20",
+    iconBgColor: "bg-purple-500"
   },
   {
     id: "fahim-ip-tv",

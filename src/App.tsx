@@ -4,7 +4,7 @@
  */
 
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Tv, Shield, Zap, Globe, Github, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy } from "lucide-react";
+import { ArrowRight, Tv, Shield, Zap, Globe, Github, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy, Languages } from "lucide-react";
 import { useState, useMemo, useEffect, FormEvent, Suspense, lazy } from "react";
 import { View, Tool, ToolCategory } from "./types";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -15,6 +15,8 @@ import { TOOL_REGISTRY, TOOL_CATEGORIES } from "./core/toolsRegistry";
 const IPTVApp = lazy(() => import("./components/IPTVApp").then(m => ({ default: m.IPTVApp })));
 const FreelancingApp = lazy(() => import("./components/FreelancingApp").then(m => ({ default: m.FreelancingApp })));
 const FifaApp = lazy(() => import("./components/FifaApp").then(m => ({ default: m.FifaApp })));
+const AIHelperApp = lazy(() => import("./components/AIHelperApp").then(m => ({ default: m.AIHelperApp })));
+const TranslatorApp = lazy(() => import("./components/TranslatorApp").then(m => ({ default: m.TranslatorApp })));
 
 // Firestore and Firebase Authentication integrations
 import {
@@ -152,6 +154,12 @@ const Header = ({ currentView, setView, onContactClick, onCommunityClick }: { cu
 
 const getToolAppStoreMeta = (id: string) => {
   switch (id) {
+    case "fahim-translator":
+      return {
+        subtitle: "Smart Multi-Lingual Translator",
+        genre: "AI & Languages",
+        gradient: "bg-gradient-to-tr from-[#3b0764] via-[#581c87] to-[#7e22ce] border border-purple-500/25 shadow-[0_0_15px_rgba(147,51,234,0.15)]"
+      };
     case "fifa-2026":
       return {
         subtitle: "FIFA World Cup 2026™ Match Center",
@@ -279,12 +287,16 @@ const ToolGrid = ({
   activeCategory, 
   handleLaunchIPTV, 
   handleLaunchFreelancing,
-  handleLaunchFifa
+  handleLaunchFifa,
+  handleLaunchAIHelper,
+  handleLaunchTranslator
 }: { 
   activeCategory: ToolCategory; 
   handleLaunchIPTV: (playlistUrl?: string, category?: string) => void; 
   handleLaunchFreelancing: () => void;
   handleLaunchFifa: () => void;
+  handleLaunchAIHelper: () => void;
+  handleLaunchTranslator: () => void;
 }) => {
   const filteredTools = useMemo(() => {
     if (activeCategory === "All") return TOOLS;
@@ -298,12 +310,13 @@ const ToolGrid = ({
       case "Utilities": return "SYSTEM ESSENTIALS";
       case "Web Tools": return "PLATFORMS & SPEED";
       case "Sports": return "SPORTS CENTER";
+      case "AI": return "AI & AUTOMATION";
       default: return "OUR SELECTION";
     }
   }, [activeCategory]);
 
   return (
-    <div className="w-full max-w-[440px] sm:max-w-[480px] px-4 select-none flex flex-col min-h-0 h-full max-h-[500px]">
+    <div className="w-full max-w-[440px] sm:max-w-[480px] px-4 select-none flex flex-col min-h-0 h-full max-h-[620px]">
       <motion.div
         layout
         initial={{ opacity: 0, scale: 0.98 }}
@@ -362,10 +375,14 @@ const ToolGrid = ({
                           e.stopPropagation();
                           if (tool.id === "fifa-2026") {
                             handleLaunchFifa();
+                          } else if (tool.id === "fahim-tranlsator" || tool.id === "fahim-translator") {
+                            handleLaunchTranslator();
                           } else if (tool.id === "fahim-ip-tv") {
                             handleLaunchIPTV();
                           } else if (tool.id === "start-freelancing") {
                             handleLaunchFreelancing();
+                          } else if (tool.id === "fahim-ai-helper") {
+                            handleLaunchAIHelper();
                           }
                         }}
                         className="bg-[#2c2c2e] hover:bg-[#3a3a3c] text-[#0a84ff] hover:text-[#3396ff] font-extrabold text-[12px] sm:text-[13px] h-7 sm:h-[29px] px-5 rounded-full select-none transition-all active:scale-95 duration-150 flex items-center justify-center border-0 tracking-tight cursor-pointer"
@@ -436,6 +453,21 @@ export default function App() {
   const [iptvActiveCategory, setIptvActiveCategory] = useState<string | undefined>(undefined);
   const [iptvBackView, setIptvBackView] = useState<View>("tools");
 
+  const handleLaunchTranslator = () => {
+    setTransitionProps({
+      title: "Fahim Translator",
+      subtitle: "Initializing multi-lingual core...",
+      icon: Sparkles,
+      glowColor: "bg-purple-600/20",
+      iconBgColor: "bg-purple-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("translator");
+      setIsTransitioning(false);
+    }, 1800);
+  };
+
   const handleLaunchIPTV = (playlistUrl?: string, category?: string, backView: View = "tools") => {
     setIptvPlaylistUrl(playlistUrl);
     setIptvActiveCategory(category);
@@ -482,6 +514,21 @@ export default function App() {
       setView("fifa");
       setIsTransitioning(false);
     }, 2000);
+  };
+
+  const handleLaunchAIHelper = () => {
+    setTransitionProps({
+      title: "Fahim AI Helper",
+      subtitle: "Initializing DeepSeek Intelligence Core...",
+      icon: Sparkles,
+      glowColor: "bg-blue-600/20",
+      iconBgColor: "bg-blue-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("ai-helper");
+      setIsTransitioning(false);
+    }, 1800);
   };
 
   const handleCopyEmail = () => {
@@ -832,7 +879,7 @@ export default function App() {
     setApiToken(token);
   };
 
-  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv";
+  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator";
 
   return (
     <div className={`flex flex-col font-sans selection:bg-blue-500/30 w-full relative ${
@@ -840,7 +887,7 @@ export default function App() {
     }`}>
       <BackgroundGlows />
       {view === "hero" && <SpiderWeb />}
-      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && (
+      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && view !== "ai-helper" && view !== "translator" && (
         <Header currentView={view} setView={setView} onContactClick={() => setIsContactOpen(true)} onCommunityClick={() => setIsCommunityOpen(true)} />
       )}
 
@@ -925,6 +972,8 @@ export default function App() {
                 handleLaunchIPTV={handleLaunchIPTV} 
                 handleLaunchFreelancing={handleLaunchFreelancing}
                 handleLaunchFifa={handleLaunchFifa}
+                handleLaunchAIHelper={handleLaunchAIHelper}
+                handleLaunchTranslator={handleLaunchTranslator}
               />
             </div>
           </motion.main>
@@ -997,6 +1046,54 @@ export default function App() {
                 <FifaApp 
                   onBack={() => setView("tools")} 
                   onWatchLiveIPTV={(url, cat) => handleLaunchIPTV(url, cat, "fifa")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "ai-helper" ? (
+          <motion.div 
+            key="ai-helper-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="Fahim AI Helper" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="Fahim AI Helper" 
+                  subtitle="Initializing DeepSeek Intelligence Core..." 
+                  icon={Sparkles} 
+                  glowColor="bg-blue-600/20" 
+                  iconBgColor="bg-blue-500" 
+                />
+              }>
+                <AIHelperApp 
+                  onBack={() => setView("tools")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "translator" ? (
+          <motion.div 
+            key="translator-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="Fahim Translator" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="Fahim Translator" 
+                  subtitle="Initializing multi-lingual core..." 
+                  icon={Languages} 
+                  glowColor="bg-purple-600/20" 
+                  iconBgColor="bg-purple-500" 
+                />
+              }>
+                <TranslatorApp 
+                  onBack={() => setView("tools")} 
                 />
               </Suspense>
             </ErrorBoundary>
@@ -1524,9 +1621,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <footer className="relative z-10 p-6 text-center text-white/10 text-[10px] font-medium tracking-widest uppercase">
-        © {new Date().getFullYear()} — Built with Precision
-      </footer>
     </div>
   );
 }
