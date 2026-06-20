@@ -4,7 +4,7 @@
  */
 
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Tv, Shield, Zap, Globe, Github, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy, Languages } from "lucide-react";
+import { ArrowRight, Tv, Shield, Zap, Globe, Github, Facebook, Instagram, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy, Languages } from "lucide-react";
 import { useState, useMemo, useEffect, FormEvent, Suspense, lazy } from "react";
 import { View, Tool, ToolCategory } from "./types";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -119,7 +119,7 @@ const Header = ({ currentView, setView, onContactClick, onCommunityClick }: { cu
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/10 relative z-10 animate-float"
           />
         </div>
-        <span className="font-display font-bold text-xs sm:text-sm text-white/85 tracking-tight group-hover:text-blue-400 transition-colors">Fahim M. Siam</span>
+        <span className="font-display font-bold text-xs sm:text-sm text-white/85 tracking-tight group-hover:text-blue-400 transition-colors">Fahim Montasir Siam</span>
       </div>
       
       <div className="flex items-center gap-1.5 sm:gap-3">
@@ -917,9 +917,9 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="font-display text-[2.85rem] min-[360px]:text-[3.25rem] sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-3 sm:mb-6 bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent leading-[1.1] sm:leading-none"
+                className="font-display text-[2.85rem] min-[360px]:text-[3.25rem] sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-3 sm:mb-6 bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent leading-[1.1] sm:leading-none text-center"
               >
-                Fahim Muntasir Siam
+                Fahim Montasir Siam
               </motion.h1>
               
               <motion.div
@@ -928,12 +928,66 @@ export default function App() {
                 transition={{ delay: 0.4 }}
                 className="mb-5 sm:mb-8"
               >
-                <h2 className="text-base sm:text-xl md:text-2xl font-display font-bold text-indigo-400 mb-2 sm:mb-4">
+                <h2 className="text-base sm:text-xl md:text-2xl font-display font-bold text-indigo-400 mb-2 sm:mb-4 text-center">
                   Ethical Hacker & Developer
                 </h2>
-                <p className="text-white/75 text-[12px] min-[360px]:text-sm sm:text-base md:text-xl max-w-sm sm:max-w-2xl mx-auto leading-relaxed px-2 font-medium">
-                  Building useful tools, modern web experiences, automation systems and secure digital products. Welcome to the official portfolio of Fahim Muntasir (Fahim Muntasir Siam) — Bangladeshi Ethical Hacker, Full-Stack Developer, and Technical Architect.
+                <p className="text-white/75 text-[12px] min-[360px]:text-sm sm:text-base md:text-xl max-w-sm sm:max-w-2xl mx-auto leading-relaxed px-2 font-medium text-center">
+                  Building useful tools, modern web experiences, automation systems and secure digital products. Welcome to the official portfolio of Fahim Montasir (Fahim Montasir Siam) — Bangladeshi Ethical Hacker, Full-Stack Developer, and Technical Architect.
                 </p>
+                
+                {/* Social media connections for search indexing and user navigation */}
+                <div className="flex items-center justify-center gap-3 flex-wrap mt-5 sm:mt-7 max-w-lg mx-auto">
+                  <a
+                    href="https://github.com/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-white/50 hover:text-white transition-colors bg-white/5 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-full select-none"
+                    title="Fahim Montasir Siam on GitHub"
+                  >
+                    <Github className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                    <span>GitHub</span>
+                  </a>
+                  <a
+                    href="https://facebook.com/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-white/50 hover:text-white transition-colors bg-white/5 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-full select-none"
+                    title="Fahim Montasir Siam on Facebook"
+                  >
+                    <Facebook className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Facebook</span>
+                  </a>
+                  <a
+                    href="https://instagram.com/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-white/50 hover:text-white transition-colors bg-white/5 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-full select-none"
+                    title="Fahim Montasir Siam on Instagram"
+                  >
+                    <Instagram className="w-3.5 h-3.5 text-pink-500" />
+                    <span>Instagram</span>
+                  </a>
+                  <a
+                    href="https://tiktok.com/@fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-white/50 hover:text-white transition-colors bg-white/5 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-full select-none"
+                    title="Fahim Montasir Siam on TikTok"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-purple-400" />
+                    <span>TikTok</span>
+                  </a>
+                  <a
+                    href="https://t.me/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-white/50 hover:text-white transition-colors bg-white/5 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-full select-none"
+                    title="Fahim Montasir Siam on Telegram"
+                  >
+                    <Send className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Telegram</span>
+                  </a>
+                </div>
               </motion.div>
 
               <motion.div
@@ -1169,6 +1223,58 @@ export default function App() {
                 <span>Send Real-Time Email</span>
                 <ArrowRight className="w-4 h-4" />
               </a>
+
+              {/* Social Connections */}
+              <div className="mb-6">
+                <span className="block text-[8px] uppercase tracking-wider font-extrabold text-[#38BDF8] mb-2.5 text-left">My Profiles & Socials</span>
+                <div className="grid grid-cols-2 gap-2 text-left">
+                  <a
+                    href="https://github.com/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-slate-500/30 hover:bg-white/5 text-white/70 hover:text-white transition-all text-xs font-bold"
+                  >
+                    <Github className="w-4 h-4 text-slate-400" />
+                    <span>GitHub</span>
+                  </a>
+                  <a
+                    href="https://facebook.com/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-blue-500/30 hover:bg-white/5 text-white/70 hover:text-white transition-all text-xs font-bold"
+                  >
+                    <Facebook className="w-4 h-4 text-blue-500" />
+                    <span>Facebook</span>
+                  </a>
+                  <a
+                    href="https://instagram.com/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-pink-500/30 hover:bg-white/5 text-white/70 hover:text-white transition-all text-xs font-bold"
+                  >
+                    <Instagram className="w-4 h-4 text-pink-500" />
+                    <span>Instagram</span>
+                  </a>
+                  <a
+                    href="https://tiktok.com/@fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-purple-500/30 hover:bg-white/5 text-white/70 hover:text-white transition-all text-xs font-bold"
+                  >
+                    <Globe className="w-4 h-4 text-purple-400" />
+                    <span>TikTok</span>
+                  </a>
+                  <a
+                    href="https://t.me/fahimxdm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20 text-sky-450 hover:text-white transition-all text-xs font-black"
+                  >
+                    <Send className="w-4 h-4 text-sky-400 animate-pulse" />
+                    <span>Telegram channel</span>
+                  </a>
+                </div>
+              </div>
 
               {/* Funny English warning note */}
               <div className="p-3.5 rounded-2xl bg-red-950/25 border border-red-500/20 text-red-300 text-[10px] leading-relaxed font-bold text-center">

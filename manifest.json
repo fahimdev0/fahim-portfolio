@@ -1,19 +1,19 @@
 {
-  "name": "Fahim Muntasir",
-  "short_name": "Fahim Muntasir",
+  "name": "Fahim Montasir Siam",
+  "short_name": "Fahim Montasir",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
-  "description": "Fahim Muntasir",
+  "description": "Fahim Montasir Siam is an Ethical Hacker, Cyber Security Researcher, and Full-Stack Developer.",
   "icons": [
     {
-      "src": "https://i.ibb.co/xL3nJbB/fifa-icon.png",
+      "src": "https://i.postimg.cc/KjWv0jtW/Chat-GPT-Image-Jun-16-2026-05-25-46-PM.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://i.ibb.co/xL3nJbB/fifa-icon.png",
+      "src": "https://i.postimg.cc/KjWv0jtW/Chat-GPT-Image-Jun-16-2026-05-25-46-PM.png",
       "sizes": "512x512",
       "type": "image/png"
     }

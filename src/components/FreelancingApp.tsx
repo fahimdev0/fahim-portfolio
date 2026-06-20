@@ -439,7 +439,7 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
   const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
   const [proposalInputs, setProposalInputs] = useState({
     clientName: "John",
-    myName: "Fahim Muntasir Siam",
+    myName: "Fahim Montasir Siam",
     specificNeed: "building a secure business portfolio app with custom branding",
     relevantResult: "rebuilt a local gym's mobile interface, increasing inquiries by 40%",
     step1: "Audit your current application frameworks for user experience security roadblocks",
