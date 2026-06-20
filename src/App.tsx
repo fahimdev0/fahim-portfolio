@@ -932,7 +932,7 @@ export default function App() {
                   Ethical Hacker & Developer
                 </h2>
                 <p className="text-white/75 text-[12px] min-[360px]:text-sm sm:text-base md:text-xl max-w-sm sm:max-w-2xl mx-auto leading-relaxed px-2 font-medium">
-                  Building useful tools, modern web experiences, automation systems and secure digital products.
+                  Building useful tools, modern web experiences, automation systems and secure digital products. Welcome to the official portfolio of Fahim Muntasir (Fahim Muntasir Siam) — Bangladeshi Ethical Hacker, Full-Stack Developer, and Technical Architect.
                 </p>
               </motion.div>
 

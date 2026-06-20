@@ -111,6 +111,17 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Explicitly serve robots.txt and sitemap.xml directly for Google Search Console indexing and crawler discovery
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain");
+    res.sendFile(path.join(process.cwd(), process.env.NODE_ENV === "production" ? "dist/robots.txt" : "public/robots.txt"));
+  });
+
+  app.get("/sitemap.xml", (req, res) => {
+    res.type("application/xml");
+    res.sendFile(path.join(process.cwd(), process.env.NODE_ENV === "production" ? "dist/sitemap.xml" : "public/sitemap.xml"));
+  });
+
   // API Route for Translation
   app.post("/api/translate", async (req, res) => {
     const { text, style } = req.body;
