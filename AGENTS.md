@@ -46,3 +46,9 @@ This website is a highly scalable multi-tool platform containing independent int
    - Desktop responsive modifications must never break mobile screens, and mobile styling updates must never break desktop layout precision.
    - Keep tool-specific styles and classes scoped locally inside the tool's component code.
    * **Version Lock:** Before applying any update, safeguard existing features, existing UI aesthetics, and existing user experiences. Only touch the target tool requested.
+
+6. **Viewport Containment & UI Stability Rules (App-like Behavior)**
+   - All interactive tools **MUST** be configured as stable, non-breaking full-screen layouts that do not stretch the viewport or break the dashboard's responsive frame.
+   - **Height & Grid Containment**: Each tool's main wrapper must use `h-full w-full flex flex-col overflow-hidden relative` and utilize inner scrollable divs (`flex-grow overflow-y-auto no-scrollbar`) for content instead of body level scrolling.
+   - **Stable Page Register**: Every newly created or updated tool **MUST** be explicitly white-listed in `src/App.tsx` inside the `isStablePage` view checker array. This prevents layout shifting, footer overlaps, and maintains absolute stability during switching.
+   - **Header & Navigation Locking**: Ensure that when any tool is loaded or active, the header shrink states, menu icons, transition animations, and parent navigations are perfectly constrained and never clip or push elements off-screen.

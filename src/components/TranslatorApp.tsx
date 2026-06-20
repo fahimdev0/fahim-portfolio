@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, Languages, Loader2, Copy, Check, CheckCircle2, ArrowRight } from "lucide-react";
 
@@ -10,7 +10,22 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
   const [error, setError] = useState("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const styles = ["Professional", "Casual", "Aggressive", "Negotiation", "Friendly"];
+
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      // Cap max-height at 280px for standard mobile-friendly scroll
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 280)}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [inputText]);
 
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
@@ -74,7 +89,7 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#09090b] text-white">
+    <div className="w-full h-full flex flex-col bg-[#09090b] text-white overflow-hidden max-w-[100vw]">
       {/* Header */}
       <header className="h-[60px] sm:h-[70px] shrink-0 bg-transparent flex items-center justify-between px-4 sm:px-6 relative z-10 w-full pt-2">
         <div className="flex items-center gap-3">
@@ -90,14 +105,14 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
             </div>
             <div className="flex flex-col">
               <h1 className="text-sm sm:text-base font-bold text-white leading-tight">Fahim Translator</h1>
-              <span className="text-[10px] sm:text-[11px] text-white/50 font-medium">Smart Context Engine</span>
+              <span className="text-[10px] sm:text-[11px] text-white/50 font-medium font-mono">Smart Context Engine</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content Workspace */}
-      <div className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto flex flex-col px-4 sm:px-6 py-4 gap-6 sm:gap-8 min-h-0 no-scrollbar">
+      <div className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto flex flex-col px-4 sm:px-6 py-4 pb-[calc(2rem+env(safe-area-inset-bottom,24px))] gap-6 sm:gap-8 min-h-0 no-scrollbar max-w-[100vw] overflow-x-hidden">
         
         {/* Input Area */}
         <div className="flex flex-col w-full shrink-0">
@@ -105,12 +120,13 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
             <span className="w-1.5 h-1.5 rounded-full bg-purple-500/50" />
             Source Text
           </h2>
-          <div className="relative group">
+          <div className="relative group w-full">
             <textarea
+              ref={textareaRef}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Paste text or message here in any language..."
-              className="w-full min-h-[140px] bg-[#121214] border border-white/10 rounded-2xl p-4 sm:p-5 text-white placeholder-white/30 outline-none resize-none focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.1)] transition-all leading-relaxed"
+              className="w-full min-h-[140px] bg-[#121214] border border-white/10 rounded-2xl p-4 sm:p-5 pb-20 sm:pb-24 text-white placeholder-white/30 outline-none resize-none focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.1)] transition-all leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap overflow-y-auto"
             />
             
             {/* Style Selector inside input area bottom right */}
@@ -152,7 +168,7 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm font-medium"
+              className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap"
             >
               {error}
             </motion.div>
@@ -160,13 +176,13 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
 
           {isTranslating && (
              <motion.div
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               className="flex flex-col items-center justify-center py-12 gap-4 text-white/50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center py-12 gap-4 text-white/50"
              >
-               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-               <p className="text-sm font-medium animate-pulse">Analyzing context & translating...</p>
+                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                <p className="text-sm font-medium animate-pulse">Analyzing context & translating...</p>
              </motion.div>
           )}
 
@@ -176,22 +192,22 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-4 sm:gap-6 w-full"
             >
-              <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group">
+              <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group w-full">
                 <div className="px-4 py-2.5 bg-black/40 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[10px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">Polished English</span>
                   <CopyButton text={result.polished_version || ""} id="polished" />
                 </div>
-                <div className="p-4 sm:p-5 text-sm sm:text-base leading-relaxed text-white font-medium">
+                <div className="p-4 sm:p-5 text-sm sm:text-base leading-relaxed text-white font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
                   {result.polished_version}
                 </div>
               </div>
 
-              <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group opacity-80">
+              <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group opacity-80 w-full">
                 <div className="px-4 py-2.5 bg-black/40 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[10px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">Direct Translation</span>
                   <CopyButton text={result.direct_translation || ""} id="direct" />
                 </div>
-                <div className="p-4 sm:p-5 text-sm sm:text-base leading-relaxed text-white/80">
+                <div className="p-4 sm:p-5 text-sm sm:text-base leading-relaxed text-white/80 break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
                   {result.direct_translation}
                 </div>
               </div>
@@ -204,7 +220,7 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
                animate={{ opacity: 1, y: 0 }}
                className="flex flex-col gap-4 sm:gap-6 w-full"
              >
-               <div className="bg-[#121214] border border-purple-500/20 rounded-2xl overflow-hidden flex flex-col shadow-[0_0_20px_rgba(168,85,247,0.05)] relative">
+               <div className="bg-[#121214] border border-purple-500/20 rounded-2xl overflow-hidden flex flex-col shadow-[0_0_20px_rgba(168,85,247,0.05)] relative w-full">
                  <div className="px-4 py-2.5 bg-black/40 border-b border-white/5 flex items-center justify-between">
                    <div className="flex items-center gap-2">
                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
@@ -212,27 +228,27 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
                    </div>
                    <CopyButton text={result.smart_reply || ""} id="smart" />
                  </div>
-                 <div className="p-4 sm:p-5 text-sm sm:text-base leading-relaxed text-white font-medium">
+                 <div className="p-4 sm:p-5 text-sm sm:text-base leading-relaxed text-white font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
                    {result.smart_reply}
                  </div>
                </div>
 
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full">
-                 <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group opacity-80">
+                 <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group opacity-80 w-full">
                    <div className="px-4 py-2 bg-black/40 border-b border-white/5 flex items-center justify-between">
                      <span className="text-[10px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">Meaning & Intent</span>
                    </div>
-                   <div className="p-4 text-sm leading-relaxed text-white/80">
+                   <div className="p-4 text-sm leading-relaxed text-white/80 break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
                      {result.meaning}
                    </div>
                  </div>
 
-                 <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group opacity-70">
+                 <div className="bg-[#121214] border border-white/10 rounded-2xl overflow-hidden flex flex-col group opacity-70 w-full">
                    <div className="px-4 py-2 bg-black/40 border-b border-white/5 flex items-center justify-between">
                      <span className="text-[10px] sm:text-xs font-bold text-white/40 uppercase tracking-wider">Direct Translation</span>
                      <CopyButton text={result.direct_translation || ""} id="comm_direct" />
                    </div>
-                   <div className="p-4 text-sm leading-relaxed text-white/70">
+                   <div className="p-4 text-sm leading-relaxed text-white/70 break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
                      {result.direct_translation}
                    </div>
                  </div>

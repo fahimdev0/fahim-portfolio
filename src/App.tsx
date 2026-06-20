@@ -474,10 +474,10 @@ export default function App() {
     setIptvBackView(backView);
     setTransitionProps({
       title: "Fahim IPTV",
-      subtitle: playlistUrl ? "Opening Fahim FIFA Live Sports..." : "Loading your streaming experience...",
+      subtitle: playlistUrl ? "Opening Live Channel Preset..." : "Loading premium cinematic experience...",
       icon: Tv,
-      glowColor: "bg-blue-600/20",
-      iconBgColor: "bg-blue-500"
+      glowColor: "bg-red-600/25",
+      iconBgColor: "bg-red-600"
     });
     setIsTransitioning(true);
     setTimeout(() => {
@@ -879,7 +879,7 @@ export default function App() {
     setApiToken(token);
   };
 
-  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator";
+  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator" || view === "freelancing";
 
   return (
     <div className={`flex flex-col font-sans selection:bg-blue-500/30 w-full relative ${
@@ -991,8 +991,8 @@ export default function App() {
                   title="Fahim IPTV" 
                   subtitle="Loading your streaming experience..." 
                   icon={Tv} 
-                  glowColor="bg-blue-600/20" 
-                  iconBgColor="bg-blue-500" 
+                  glowColor="bg-red-600/25" 
+                  iconBgColor="bg-red-600" 
                 />
               }>
                 <IPTVApp 
@@ -1009,7 +1009,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full min-h-screen"
+            className="w-full h-full overflow-hidden flex flex-col"
           >
             <ErrorBoundary toolName="Start Freelancing" onReset={() => setView("tools")}>
               <Suspense fallback={

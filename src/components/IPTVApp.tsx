@@ -329,16 +329,16 @@ const ChannelCard = React.memo(({
 
 const PLAYLISTS_PRESETS = [
   { 
+    name: "🌍 Fahim Global Universal (7500+ Channels)", 
+    url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/channels.m3u" 
+  },
+  { 
     name: "🏆 Fahim Sports Premium (240+ Channels)", 
     url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/sports.m3u" 
   },
   { 
     name: "🇧🇩 Fahim Bangla Live (100+ Channels)", 
     url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/bangla.m3u" 
-  },
-  { 
-    name: "🌍 Fahim Global Universal (7500+ Channels)", 
-    url: "https://raw.githubusercontent.com/SHAJON-404/iptv-playlist/refs/heads/main/app/data/channels.m3u" 
   },
   { 
     name: "⚽ Fahim FIFA Live Sports (7 Channels)", 
@@ -491,7 +491,6 @@ export const IPTVApp = ({
   };
 
 const DEFAULT_CHANNELS: IPTVChannel[] = [
-  { id: "unite8", name: "⚽ Fahim FIFA Live Sports", group: "FIFA Sports", url: "http://160.22.105.17:5080/LiveApp/streams/unite8.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
   { id: "redbull-sports", name: "🏆 Red Bull TV Sports Stream", group: "FIFA Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
   { id: "aljazeera", name: "📺 Al Jazeera English Live", group: "Global TV", url: "https://live-hls-web-aje.getaj.net/AJE/index.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
   { id: "dw-news", name: "📰 DW News English Feed", group: "Global TV", url: "https://dwamdstream102.akamaized.net/hls/live/2014190/dwstream102/index.m3u8", logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png" },
@@ -512,26 +511,6 @@ const DEFAULT_CHANNELS: IPTVChannel[] = [
         ...c,
         id: c.id || Math.random().toString(36).substring(2, 11)
       }));
-
-      // Inject user's custom FIFA / Sports channel
-      if (url.includes("fifa.m3u") || url.includes("sports.m3u")) {
-        const customChannel: IPTVChannel = {
-          id: "custom-unite8",
-          name: "⚽ Fahim FIFA Live Sports (UNITE 8)",
-          group: url.includes("fifa.m3u") ? "FIFA Sports" : "Sports",
-          url: "http://160.22.105.17:5080/LiveApp/streams/unite8.m3u8",
-          logo: "https://i.ibb.co/xL3nJbB/fifa-icon.png"
-        };
-        
-        const exists = parsed.channels.some(c => c.url === customChannel.url);
-        if (!exists) {
-          parsed.channels = [customChannel, ...parsed.channels];
-          const grp = customChannel.group;
-          if (!parsed.categories.includes(grp)) {
-            parsed.categories.push(grp);
-          }
-        }
-      }
 
       setPlaylist(parsed);
       setActiveCategory("All");
@@ -713,11 +692,13 @@ const DEFAULT_CHANNELS: IPTVChannel[] = [
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
-              <Tv className="w-4 h-4 text-white animate-pulse" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-md bg-red-600 flex items-center justify-center shadow-lg shadow-red-650/40 border border-red-500/25 active:scale-95 transition-all">
+              <span className="font-display font-black text-white text-[16px] tracking-tighter select-none leading-none filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">F</span>
             </div>
-            <h1 className="font-display font-black text-lg tracking-wider hidden sm:block bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Fahim IPTV</h1>
+            <h1 className="font-display font-black text-lg tracking-tighter hidden sm:block bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent uppercase">
+              FAHIM <span className="text-white font-medium">IPTV</span>
+            </h1>
           </div>
         </div>
 
@@ -1023,7 +1004,7 @@ const DEFAULT_CHANNELS: IPTVChannel[] = [
                       onClick={() => loadPlaylistFromUrl(PLAYLISTS_PRESETS[0].url)}
                       className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 transition-all text-white rounded-full font-bold text-xs shadow-lg shadow-indigo-600/20 active:scale-95"
                     >
-                      Reload Default Bangla Streams
+                      Reload Default Global Streams
                     </button>
                   </div>
                 ) : visibleChannels.length === 0 ? (

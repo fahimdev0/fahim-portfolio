@@ -549,7 +549,7 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
 
   if (activeTab === "menu") {
     return (
-      <div className="min-h-screen w-full bg-[#030303] text-white flex flex-col font-sans pb-16 relative">
+      <div className="h-full w-full bg-[#030303] text-white flex flex-col font-sans overflow-hidden relative">
         {/* Absolute futuristic ambient grid matching our portfolio's luxury aesthetic */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute top-[5%] left-[25%] w-[450px] h-[450px] bg-purple-600/[0.04] rounded-full blur-[140px]" />
@@ -561,7 +561,7 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
         <motion.header 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-0 z-[120] w-full border-b border-white/[0.05] backdrop-blur-xl bg-black/40 px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between"
+          className="sticky top-0 z-[120] w-full border-b border-white/[0.05] backdrop-blur-xl bg-black/40 px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between shrink-0"
         >
           <div className="max-w-4xl w-full mx-auto flex items-center justify-between col-span-12">
             <button 
@@ -592,74 +592,77 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
           </div>
         </motion.header>
 
-        {/* Clean minimalist header text */}
-        <div className="relative z-10 w-full max-w-2xl mx-auto px-4 pt-6 text-center">
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-1.5 uppercase font-display">
-            {trans("Beginner Freelancer")} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#a3e635] to-emerald-400">{trans("Ultimate Workstation")}</span>
-          </h1>
-          <p className="text-white/40 text-xs tracking-wider max-w-md mx-auto leading-relaxed">
-            {lang === "en" ? "Select a workstation module step-by-step to start your path" : "শুরু করতে নিচের যেকোনো একটি মডিউল সিলেক্ট করুন"}
-          </p>
-        </div>
+        {/* Inner page scrollable area */}
+        <div className="flex-grow overflow-y-auto no-scrollbar pb-24 relative z-10">
+          {/* Clean minimalist header text */}
+          <div className="relative w-full max-w-2xl mx-auto px-4 pt-6 text-center">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-1.5 uppercase font-display">
+              {trans("Beginner Freelancer")} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#a3e635] to-emerald-400">{trans("Ultimate Workstation")}</span>
+            </h1>
+            <p className="text-white/40 text-xs tracking-wider max-w-md mx-auto leading-relaxed">
+              {lang === "en" ? "Select a workstation module step-by-step to start your path" : "শুরু করতে নিচের যেকোনো একটি মডিউল সিলেক্ট করুন"}
+            </p>
+          </div>
 
-        {/* Serialized Navigation categories */}
-        <div className="relative z-10 w-full max-w-2xl mx-auto px-4 mt-8 flex flex-col gap-4">
-          <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] font-mono text-center mb-1">
-            {lang === "en" ? "CHOOSE A WORKSTATION MODULE TO LAUNCH" : "শুরু করতে যেকোনো একটি ওয়ার্কস্টেশন মডিউল সিলেক্ট করুন"}
-          </p>
+          {/* Serialized Navigation categories */}
+          <div className="relative z-10 w-full max-w-2xl mx-auto px-4 mt-8 flex flex-col gap-4">
+            <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] font-mono text-center mb-1">
+              {lang === "en" ? "CHOOSE A WORKSTATION MODULE TO LAUNCH" : "শুরু করতে যেকোনো একটি ওয়ার্কস্টেশন মডিউল সিলেক্ট করুন"}
+            </p>
 
-          <div className="grid grid-cols-1 gap-3.5">
-            {menuCategories.map((cat) => {
-              const IconComponent = cat.icon;
-              return (
-                <motion.button
-                  key={cat.id}
-                  id={`cat-card-${cat.id}`}
-                  onClick={() => handleCategoryClick(cat.id)}
-                  disabled={isLoadingCat}
-                  whileHover={{ scale: 1.01, y: -1 }}
-                  whileTap={{ scale: 0.99 }}
-                  className="w-full text-left p-4 rounded-2xl bg-neutral-900/50 hover:bg-neutral-900/85 border border-white/[0.05] hover:border-purple-500/35 transition-all flex items-center justify-between gap-4 cursor-pointer group shadow-xl relative overflow-hidden"
-                >
-                  <div className={`flex items-center gap-4 transition-opacity ${isLoadingCat && loadingCatId === cat.id ? 'opacity-0' : 'opacity-100'}`}>
-                    {/* Unique serial bullet with border */}
-                    <span className="font-mono text-[11px] font-bold text-white/40 bg-white/[0.03] border border-white/5 px-2.5 py-1 rounded-lg">
-                      {cat.serial}
-                    </span>
+            <div className="grid grid-cols-1 gap-3.5">
+              {menuCategories.map((cat) => {
+                const IconComponent = cat.icon;
+                return (
+                  <motion.button
+                    key={cat.id}
+                    id={`cat-card-${cat.id}`}
+                    onClick={() => handleCategoryClick(cat.id)}
+                    disabled={isLoadingCat}
+                    whileHover={{ scale: 1.01, y: -1 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="w-full text-left p-4 rounded-2xl bg-neutral-900/50 hover:bg-neutral-900/85 border border-white/[0.05] hover:border-purple-500/35 transition-all flex items-center justify-between gap-4 cursor-pointer group shadow-xl relative overflow-hidden"
+                  >
+                    <div className={`flex items-center gap-4 transition-opacity ${isLoadingCat && loadingCatId === cat.id ? 'opacity-0' : 'opacity-100'}`}>
+                      {/* Unique serial bullet with border */}
+                      <span className="font-mono text-[11px] font-bold text-white/40 bg-white/[0.03] border border-white/5 px-2.5 py-1 rounded-lg">
+                        {cat.serial}
+                      </span>
 
-                    {/* Left icon wrapper */}
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${cat.color} border shrink-0`}>
-                      <IconComponent className="w-5 h-5 text-purple-400" />
-                    </div>
+                      {/* Left icon wrapper */}
+                      <div className={`p-2.5 rounded-xl bg-gradient-to-br ${cat.color} border shrink-0`}>
+                        <IconComponent className="w-5 h-5 text-purple-400" />
+                      </div>
 
-                    {/* Title & brief explanation list */}
-                    <div>
-                      <h3 className="text-sm sm:text-base font-black text-white group-hover:text-purple-400 transition-colors flex items-center gap-1.5">
-                        {trans(cat.label)}
-                      </h3>
-                      <p className="text-xs text-white/50 leading-relaxed mt-0.5 max-w-md">
-                        {cat.desc}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Right chevron indicator */}
-                  <div className={`shrink-0 w-8 h-8 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center text-white/30 group-hover:text-white group-hover:bg-purple-600/30 group-hover:border-purple-500/40 transition-all ${isLoadingCat && loadingCatId === cat.id ? 'opacity-0' : 'opacity-100'}`}>
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-
-                  {/* Loading State Overlay */}
-                  {isLoadingCat && loadingCatId === cat.id && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-purple-900/20 backdrop-blur-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-                        <span className="text-xs font-bold text-purple-300 tracking-widest uppercase animate-pulse">{trans("Loading")}...</span>
+                      {/* Title & brief explanation list */}
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black text-white group-hover:text-purple-400 transition-colors flex items-center gap-1.5">
+                          {trans(cat.label)}
+                        </h3>
+                        <p className="text-xs text-white/50 leading-relaxed mt-0.5 max-w-md">
+                          {cat.desc}
+                        </p>
                       </div>
                     </div>
-                  )}
-                </motion.button>
-              );
-            })}
+
+                    {/* Right chevron indicator */}
+                    <div className={`shrink-0 w-8 h-8 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center text-white/30 group-hover:text-white group-hover:bg-purple-600/30 group-hover:border-purple-500/40 transition-all ${isLoadingCat && loadingCatId === cat.id ? 'opacity-0' : 'opacity-100'}`}>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+
+                    {/* Loading State Overlay */}
+                    {isLoadingCat && loadingCatId === cat.id && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-purple-900/20 backdrop-blur-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                          <span className="text-xs font-bold text-purple-300 tracking-widest uppercase animate-pulse">{trans("Loading")}...</span>
+                        </div>
+                      </div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -667,7 +670,7 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#030303] text-white flex flex-col font-sans pb-16 relative">
+    <div className="h-full w-full bg-[#030303] text-white flex flex-col font-sans overflow-hidden relative">
       {/* Absolute futuristic ambient grid matching our portfolio's luxury aesthetic */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute top-[5%] left-[25%] w-[450px] h-[450px] bg-purple-600/[0.04] rounded-full blur-[140px]" />
@@ -679,14 +682,13 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
       <motion.header 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-[120] w-full border-b border-white/[0.05] backdrop-blur-xl bg-black/40 px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between"
+        className="sticky top-0 z-[120] w-full border-b border-white/[0.05] backdrop-blur-xl bg-black/40 px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between shrink-0"
       >
         <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
           <button 
             onClick={() => {
               setActiveTab("menu");
               setSearchQuery("");
-              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className="flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer"
           >
@@ -714,11 +716,38 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
         </div>
       </motion.header>
 
-      {/* Main SaaS Dashboard Container */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 mt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        
-        {/* Desktop Sticky Sidebar Navigation Menu */}
-        <aside className="hidden md:flex md:col-span-3 sticky top-24 z-10 flex-col gap-2.5">
+      {/* Mobile Horizontal Category Carousel Menu */}
+      <div className="md:hidden w-full overflow-x-auto no-scrollbar shrink-0 px-4 py-2.5 flex items-center gap-1.5 border-b border-white/[0.04] bg-neutral-900/10 z-20">
+        {menuCategories.map((cat) => {
+          const IconComponent = cat.icon;
+          const isActive = activeTab === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => {
+                setActiveTab(cat.id);
+                setSearchQuery("");
+              }}
+              className={`flex items-center gap-1.5 shrink-0 px-3.5 py-2 rounded-xl text-[10px] font-black tracking-tight transition-all border ${
+                isActive 
+                  ? "bg-purple-600 border-purple-500/30 text-white shadow-md shadow-purple-500/10" 
+                  : "bg-white/[0.02] border-white/5 text-white/50 hover:text-white"
+              }`}
+            >
+              <IconComponent className="w-3.5 h-3.5 text-purple-400" />
+              <span>{trans(cat.label)}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Scrollable Container Wrapper */}
+      <div className="flex-grow overflow-y-auto no-scrollbar w-full relative z-10 pb-24">
+        {/* Main SaaS Dashboard Container */}
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 mt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          
+          {/* Desktop Sticky Sidebar Navigation Menu */}
+          <aside className="hidden md:flex md:col-span-3 sticky top-4 z-10 flex-col gap-2.5">
           <div className="bg-neutral-900/40 border border-white/[0.04] p-3 rounded-2xl backdrop-blur-xl flex flex-col gap-1 w-full">
             <p className="text-[9px] font-black uppercase text-white/30 px-3 py-1 text-left tracking-widest font-mono">{trans("CONTROL CONSOLE")}</p>
             
@@ -2246,6 +2275,7 @@ export const FreelancingApp = ({ onBack }: FreelancingAppProps) => {
           </AnimatePresence>
         </main>
       </div>
+     </div>
     </div>
   );
 };
