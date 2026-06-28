@@ -4,7 +4,7 @@
  */
 
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Tv, Shield, Zap, Globe, Github, Facebook, Instagram, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy, Languages } from "lucide-react";
+import { ArrowRight, Tv, Shield, Zap, Globe, Github, Facebook, Instagram, ExternalLink, ChevronLeft, LayoutGrid, Terminal, Cpu, Mail, Copy, Check, X, Users, Send, Pin, Youtube, MessageSquare, Lock, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, Settings, Sliders, KeyRound, LogOut, CheckCircle2, ShieldCheck, Database, Briefcase, BookOpen, Trophy, Languages, FileText } from "lucide-react";
 import { useState, useMemo, useEffect, FormEvent, Suspense, lazy } from "react";
 import { View, Tool, ToolCategory } from "./types";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -17,6 +17,9 @@ const FreelancingApp = lazy(() => import("./components/FreelancingApp").then(m =
 const FifaApp = lazy(() => import("./components/FifaApp").then(m => ({ default: m.FifaApp })));
 const AIHelperApp = lazy(() => import("./components/AIHelperApp").then(m => ({ default: m.AIHelperApp })));
 const TranslatorApp = lazy(() => import("./components/TranslatorApp").then(m => ({ default: m.TranslatorApp })));
+const APITesterApp = lazy(() => import("./components/APITesterApp").then(m => ({ default: m.APITesterApp })));
+const HackingApp = lazy(() => import("./components/HackingApp").then(m => ({ default: m.HackingApp })));
+const DocumentClonerApp = lazy(() => import("./components/DocumentClonerApp").then(m => ({ default: m.DocumentClonerApp })));
 
 // Firestore and Firebase Authentication integrations
 import {
@@ -154,11 +157,35 @@ const Header = ({ currentView, setView, onContactClick, onCommunityClick }: { cu
 
 const getToolAppStoreMeta = (id: string) => {
   switch (id) {
+    case "fahim-doc-cloner":
+      return {
+        subtitle: "AI-Powered A4 Template Cloner & Editor",
+        genre: "AI & Documents",
+        gradient: "bg-gradient-to-tr from-[#020617] via-[#2563eb] to-[#38bdf8] border border-blue-500/35 shadow-[0_0_15px_rgba(59,130,246,0.25)]"
+      };
+    case "fahim-api-tester":
+      return {
+        subtitle: "Professional API Playground & Key Validator",
+        genre: "Developer Tools",
+        gradient: "bg-gradient-to-tr from-[#140b02] via-[#ea580c] to-[#fb923c] border border-orange-500/35 shadow-[0_0_15px_rgba(234,88,12,0.25)]"
+      };
     case "fahim-translator":
       return {
         subtitle: "Smart Multi-Lingual Translator",
         genre: "AI & Languages",
-        gradient: "bg-gradient-to-tr from-[#3b0764] via-[#581c87] to-[#7e22ce] border border-purple-500/25 shadow-[0_0_15px_rgba(147,51,234,0.15)]"
+        gradient: "bg-gradient-to-tr from-[#111124] via-[#6366f1] to-[#ec4899] border border-pink-500/35 shadow-[0_0_15px_rgba(236,72,153,0.25)]"
+      };
+    case "fahim-ai-helper":
+      return {
+        subtitle: "DeepSeek Powered AI Assistant Hub",
+        genre: "AI & Automation",
+        gradient: "bg-gradient-to-tr from-[#020813] via-[#0284c7] to-[#22d3ee] border border-cyan-500/35 shadow-[0_0_15px_rgba(34,211,238,0.3)]"
+      };
+    case "ethical-hacking":
+      return {
+        subtitle: "Multi-Category Security Testing Suite",
+        genre: "Security Operations",
+        gradient: "bg-gradient-to-tr from-[#030101] via-[#1a080a] to-[#2e0509] border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.35)]"
       };
     case "fifa-2026":
       return {
@@ -276,6 +303,63 @@ const AppStoreIcon = ({ id, icon: Icon }: { id: string; icon: any }) => {
             F
           </span>
         </div>
+      ) : id === "fahim-ai-helper" ? (
+        // Futuristic Glowing AI Orbits
+        <div className="relative flex items-center justify-center w-full h-full z-10">
+          <div className="absolute w-5.5 h-5.5 rounded-full border border-cyan-400/35 animate-pulse" />
+          <svg className="w-5.5 h-5.5 text-cyan-300 filter drop-shadow-[0_0_8px_rgba(34,211,238,0.85)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" fill="cyan" fillOpacity="0.25" />
+            <circle cx="12" cy="12" r="2" fill="white" />
+          </svg>
+        </div>
+      ) : id === "fahim-translator" ? (
+        // Glassmorphism Overlapping Dual translation Squares (EN-বা)
+        <div className="relative flex items-center justify-center w-full h-full z-10">
+          <div className="absolute w-[24px] h-[24px] rounded-lg bg-pink-500/25 border border-pink-400/40 -translate-x-[5px] -translate-y-[4px] flex items-center justify-center shadow-lg select-none">
+            <span className="text-[10.5px] font-sans font-extrabold text-white">A</span>
+          </div>
+          <div className="absolute w-[24px] h-[24px] rounded-lg bg-indigo-500/45 border border-indigo-400/50 translate-x-[6px] translate-y-[5px] flex items-center justify-center shadow-lg select-none">
+            <span className="text-[10px] font-sans font-black text-indigo-100">বা</span>
+          </div>
+        </div>
+      ) : id === "fahim-api-tester" ? (
+        // Stylized Technical Developer Console
+        <div className="relative flex items-center justify-center w-full h-full z-10">
+          <div className="w-[38px] h-[35px] rounded-[7px] bg-[#0c0602]/90 border border-orange-500/50 flex flex-col justify-center items-center gap-[2.5px] shadow-inner">
+            <div className="flex gap-[3px] self-start ml-1.5">
+              <span className="w-1 h-1 rounded-full bg-red-500/80" />
+              <span className="w-1 h-1 rounded-full bg-amber-500/80" />
+              <span className="w-1 h-1 rounded-full bg-emerald-500/80" />
+            </div>
+            <div className="text-[10.5px] font-mono text-orange-400 font-extrabold leading-none select-none">&gt;_</div>
+          </div>
+        </div>
+      ) : id === "fahim-doc-cloner" ? (
+        // Spectacular 3D Glimmering Document Sheet + Magical Spark
+        <div className="relative flex items-center justify-center w-full h-full z-10 select-none">
+          <div className="w-[28px] h-[36px] bg-slate-50 rounded-[3px] border-t-[8px] border-r-[8px] border-blue-600 relative shadow-[0_3px_8px_rgba(0,0,0,0.4)] flex flex-col justify-end p-1">
+            {/* Fold Corner Effect */}
+            <div className="absolute top-0 right-0 w-[8px] h-[8px] bg-sky-100 rounded-bl-[1px]" />
+            <div className="flex flex-col gap-1 w-full mb-0.5">
+              <div className="h-[2px] bg-slate-300 w-4/5 rounded-full" />
+              <div className="h-[2px] bg-slate-300 w-[90%] rounded-full" />
+              <div className="h-[2px] bg-blue-400 w-3/5 rounded-full" />
+            </div>
+          </div>
+          <svg className="absolute top-0 -right-1.5 w-4.5 h-4.5 text-amber-300 filter drop-shadow-[0_0_5px_rgba(251,191,36,0.95)] animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 2z" />
+          </svg>
+        </div>
+      ) : id === "ethical-hacking" ? (
+        // Military Secure Red Radar Target Shield - Ultra High Contrast
+        <div className="relative flex items-center justify-center w-full h-full z-10">
+          <div className="absolute w-7 h-7 rounded-full border border-red-500/35 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+          <div className="absolute w-6 h-6 rounded-full border border-red-500/25 pointer-events-none" />
+          <svg className="w-5.5 h-5.5 text-white filter drop-shadow-[0_0_6px_rgba(239,68,68,0.7)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="white" />
+            <path d="M12 8v8M8 12h8" strokeWidth="1.6" stroke="#f43f5e" opacity="0.9" />
+          </svg>
+        </div>
       ) : (
         <Icon className="w-5.5 sm:w-6 h-5.5 sm:h-6 text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] z-10" />
       )}
@@ -289,7 +373,10 @@ const ToolGrid = ({
   handleLaunchFreelancing,
   handleLaunchFifa,
   handleLaunchAIHelper,
-  handleLaunchTranslator
+  handleLaunchTranslator,
+  handleLaunchAPITester,
+  handleLaunchHacking,
+  handleLaunchDocCloner
 }: { 
   activeCategory: ToolCategory; 
   handleLaunchIPTV: (playlistUrl?: string, category?: string) => void; 
@@ -297,11 +384,37 @@ const ToolGrid = ({
   handleLaunchFifa: () => void;
   handleLaunchAIHelper: () => void;
   handleLaunchTranslator: () => void;
+  handleLaunchAPITester: () => void;
+  handleLaunchHacking: () => void;
+  handleLaunchDocCloner: () => void;
 }) => {
+  const [pinnedTools, setPinnedTools] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("fahim_pinned_tools");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const togglePin = (id: string) => {
+    setPinnedTools((prev) => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      localStorage.setItem("fahim_pinned_tools", JSON.stringify(next));
+      return next;
+    });
+  };
+
   const filteredTools = useMemo(() => {
-    if (activeCategory === "All") return TOOLS;
-    return TOOLS.filter(t => t.category === activeCategory);
-  }, [activeCategory]);
+    const baseTools = activeCategory === "All" ? TOOLS : TOOLS.filter(t => t.category === activeCategory);
+    return [...baseTools].sort((a, b) => {
+      const aPinned = pinnedTools.includes(a.id);
+      const bPinned = pinnedTools.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+  }, [activeCategory, pinnedTools]);
 
   const categoryKicker = useMemo(() => {
     switch (activeCategory) {
@@ -342,6 +455,7 @@ const ToolGrid = ({
           <AnimatePresence mode="popLayout">
             {filteredTools.map((tool, idx) => {
               const isLive = tool.status === "Live";
+              const isPinned = pinnedTools.includes(tool.id);
               const meta = getToolAppStoreMeta(tool.id);
               
               return (
@@ -361,6 +475,22 @@ const ToolGrid = ({
                   <div className="flex flex-col min-w-0 flex-grow text-left">
                     <h3 className="text-white text-[13.5px] sm:text-[14.5px] font-extrabold tracking-tight leading-snug group-hover:text-indigo-400 transition-colors flex items-center gap-1.5 flex-wrap">
                       <span>{tool.name}</span>
+                      
+                      {/* Premium compact push-pin toggler */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePin(tool.id);
+                        }}
+                        className={`p-1 rounded-md transition-all active:scale-90 cursor-pointer ${
+                          isPinned 
+                            ? "text-purple-400 bg-purple-500/10" 
+                            : "text-[#8e8e93]/30 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        }`}
+                        title={isPinned ? "Unpin tool from top" : "Pin tool to top"}
+                      >
+                        <Pin className={`w-3 h-3 ${isPinned ? "fill-purple-400" : ""}`} />
+                      </button>
                     </h3>
                     <p className="text-[#a1a1aa] text-[9.5px] sm:text-[11px] font-medium leading-normal mt-1 opacity-90 select-none">
                       {tool.description}
@@ -375,6 +505,8 @@ const ToolGrid = ({
                           e.stopPropagation();
                           if (tool.id === "fifa-2026") {
                             handleLaunchFifa();
+                          } else if (tool.id === "fahim-doc-cloner") {
+                            handleLaunchDocCloner();
                           } else if (tool.id === "fahim-tranlsator" || tool.id === "fahim-translator") {
                             handleLaunchTranslator();
                           } else if (tool.id === "fahim-ip-tv") {
@@ -383,6 +515,10 @@ const ToolGrid = ({
                             handleLaunchFreelancing();
                           } else if (tool.id === "fahim-ai-helper") {
                             handleLaunchAIHelper();
+                          } else if (tool.id === "fahim-api-tester") {
+                            handleLaunchAPITester();
+                          } else if (tool.id === "ethical-hacking") {
+                            handleLaunchHacking();
                           }
                         }}
                         className="bg-[#2c2c2e] hover:bg-[#3a3a3c] text-[#0a84ff] hover:text-[#3396ff] font-extrabold text-[12px] sm:text-[13px] h-7 sm:h-[29px] px-5 rounded-full select-none transition-all active:scale-95 duration-150 flex items-center justify-center border-0 tracking-tight cursor-pointer"
@@ -452,6 +588,21 @@ export default function App() {
   const [iptvPlaylistUrl, setIptvPlaylistUrl] = useState<string | undefined>(undefined);
   const [iptvActiveCategory, setIptvActiveCategory] = useState<string | undefined>(undefined);
   const [iptvBackView, setIptvBackView] = useState<View>("tools");
+
+  const handleLaunchAPITester = () => {
+    setTransitionProps({
+      title: "FAHIM API TESTER",
+      subtitle: "Preparing professional playground workstation...",
+      icon: Terminal,
+      glowColor: "bg-purple-600/25",
+      iconBgColor: "bg-purple-600"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("api-tester");
+      setIsTransitioning(false);
+    }, 1800);
+  };
 
   const handleLaunchTranslator = () => {
     setTransitionProps({
@@ -529,6 +680,36 @@ export default function App() {
       setView("ai-helper");
       setIsTransitioning(false);
     }, 1800);
+  };
+
+  const handleLaunchHacking = () => {
+    setTransitionProps({
+      title: "Siam Hacking Suite",
+      subtitle: "Establishing dynamic security sandbox workstation...",
+      icon: Shield,
+      glowColor: "bg-red-600/25",
+      iconBgColor: "bg-red-600"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("hacking");
+      setIsTransitioning(false);
+    }, 1800);
+  };
+
+  const handleLaunchDocCloner = () => {
+    setTransitionProps({
+      title: "AI Doc Cloner & Editor",
+      subtitle: "Initializing A4 layout OCR & template reconstruction engine...",
+      icon: FileText,
+      glowColor: "bg-indigo-600/20",
+      iconBgColor: "bg-indigo-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("doc-cloner");
+      setIsTransitioning(false);
+    }, 2000);
   };
 
   const handleCopyEmail = () => {
@@ -879,7 +1060,7 @@ export default function App() {
     setApiToken(token);
   };
 
-  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator" || view === "freelancing";
+  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator" || view === "freelancing" || view === "api-tester" || view === "hacking" || view === "doc-cloner";
 
   return (
     <div className={`flex flex-col font-sans selection:bg-blue-500/30 w-full relative ${
@@ -887,7 +1068,7 @@ export default function App() {
     }`}>
       <BackgroundGlows />
       {view === "hero" && <SpiderWeb />}
-      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && view !== "ai-helper" && view !== "translator" && (
+      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && view !== "ai-helper" && view !== "translator" && view !== "api-tester" && view !== "hacking" && view !== "doc-cloner" && (
         <Header currentView={view} setView={setView} onContactClick={() => setIsContactOpen(true)} onCommunityClick={() => setIsCommunityOpen(true)} />
       )}
 
@@ -1028,6 +1209,9 @@ export default function App() {
                 handleLaunchFifa={handleLaunchFifa}
                 handleLaunchAIHelper={handleLaunchAIHelper}
                 handleLaunchTranslator={handleLaunchTranslator}
+                handleLaunchAPITester={handleLaunchAPITester}
+                handleLaunchHacking={handleLaunchHacking}
+                handleLaunchDocCloner={handleLaunchDocCloner}
               />
             </div>
           </motion.main>
@@ -1147,6 +1331,78 @@ export default function App() {
                 />
               }>
                 <TranslatorApp 
+                  onBack={() => setView("tools")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "api-tester" ? (
+          <motion.div 
+            key="api-tester-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="Fahim API Tester" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="FAHIM API TESTER" 
+                  subtitle="Preparing professional playground workstation..." 
+                  icon={Terminal} 
+                  glowColor="bg-purple-600/25" 
+                  iconBgColor="bg-purple-600" 
+                />
+              }>
+                <APITesterApp 
+                  onBack={() => setView("tools")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "hacking" ? (
+          <motion.div 
+            key="hacking-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="Siam Hacking Suite" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="Siam Hacking Suite" 
+                  subtitle="Establishing dynamic security sandbox workstation..." 
+                  icon={Shield} 
+                  glowColor="bg-red-600/25" 
+                  iconBgColor="bg-red-600" 
+                />
+              }>
+                <HackingApp 
+                  onBack={() => setView("tools")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "doc-cloner" ? (
+          <motion.div 
+            key="doc-cloner-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="AI Doc Cloner & Editor" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="AI Doc Cloner & Editor" 
+                  subtitle="Initializing A4 layout OCR & template reconstruction engine..." 
+                  icon={FileText} 
+                  glowColor="bg-indigo-600/20" 
+                  iconBgColor="bg-indigo-500" 
+                />
+              }>
+                <DocumentClonerApp 
                   onBack={() => setView("tools")} 
                 />
               </Suspense>

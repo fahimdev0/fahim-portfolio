@@ -1,4 +1,4 @@
-import { LucideIcon, Tv, Briefcase, Shield, Cpu, Zap, Eye, Terminal, Sparkles, Sliders, Trophy, Languages } from "lucide-react";
+import { LucideIcon, Tv, Briefcase, Shield, Cpu, Zap, Eye, Terminal, Sparkles, Sliders, Trophy, Languages, FileText } from "lucide-react";
 
 export type RegistryToolCategory =
   | "AI"
@@ -6,7 +6,8 @@ export type RegistryToolCategory =
   | "Security"
   | "Utilities"
   | "Web Tools"
-  | "Sports";
+  | "Sports"
+  | "Developer Tools";
 
 export interface RegisteredTool {
   id: string;
@@ -29,7 +30,8 @@ export const TOOL_CATEGORIES: RegistryToolCategory[] = [
   "Security",
   "Utilities",
   "Web Tools",
-  "Sports"
+  "Sports",
+  "Developer Tools"
 ];
 
 export const TOOL_REGISTRY: RegisteredTool[] = [
@@ -45,6 +47,19 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
     actionText: "Chat",
     glowColor: "bg-blue-600/20",
     iconBgColor: "bg-blue-500"
+  },
+  {
+    id: "fahim-doc-cloner",
+    name: "AI Doc Cloner & Editor",
+    route: "doc-cloner",
+    category: "AI",
+    version: "v1.0",
+    status: "Live",
+    description: "Recreate, edit and export any Bangla/English CV, application form, government biodata, affidavit, or custom document on A4 with precise layout retention.",
+    icon: FileText,
+    actionText: "Clone & Edit",
+    glowColor: "bg-indigo-600/20",
+    iconBgColor: "bg-indigo-500"
   },
   {
     id: "fifa-2026",
@@ -98,6 +113,32 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
     actionText: "Enter",
     glowColor: "bg-emerald-600/20",
     iconBgColor: "bg-emerald-500"
+  },
+  {
+    id: "fahim-api-tester",
+    name: "FAHIM API TESTER",
+    route: "fahim-api-tester",
+    category: "Developer Tools",
+    version: "v1.0",
+    status: "Live",
+    description: "Test APIs, validate API keys, inspect responses, monitor latency and verify OpenAI-compatible endpoints.",
+    icon: Terminal,
+    actionText: "Launch",
+    glowColor: "bg-purple-600/20",
+    iconBgColor: "bg-purple-600"
+  },
+  {
+    id: "ethical-hacking",
+    name: "Ethical Hacking Hub",
+    route: "ethical-hacking",
+    category: "Security",
+    version: "v1.0",
+    status: "Live",
+    description: "Multi-category security testing toolkit including information gathering, SQL Injection, custom wordlist generation, proxy chains, and more.",
+    icon: Shield,
+    actionText: "Use",
+    glowColor: "bg-[#ef4444]/25",
+    iconBgColor: "bg-[#ef4444]"
   },
   {
     id: "cyber-sentinel",
