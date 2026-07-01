@@ -158,20 +158,30 @@ export function SpiderWeb() {
     };
 
     const baseSize = Math.min(W, H);
+    const isMobile = W < 768;
 
-    // Create 4 distinct asymmetric corner-attached webs of different densities and sizes
-    createOrganicWeb(0, 0, 0, Math.PI / 2, 7, 7, baseSize * 0.72, true); // Top-Left
-    createOrganicWeb(W, 0, Math.PI / 2, Math.PI, 6, 8, baseSize * 0.68, true); // Top-Right
-    createOrganicWeb(0, H, Math.PI * 1.5, Math.PI * 2, 8, 6, baseSize * 0.76, true); // Bottom-Left
-    createOrganicWeb(W, H, Math.PI, Math.PI * 1.5, 6, 7, baseSize * 0.64, true); // Bottom-Right
+    if (isMobile) {
+      // Significantly scaled down for ultra-high framerate mobile experience
+      createOrganicWeb(0, 0, 0, Math.PI / 2, 4, 4, baseSize * 0.52, true); // Top-Left
+      createOrganicWeb(W, 0, Math.PI / 2, Math.PI, 4, 4, baseSize * 0.48, true); // Top-Right
+      createOrganicWeb(0, H, Math.PI * 1.5, Math.PI * 2, 4, 4, baseSize * 0.54, true); // Bottom-Left
+      createOrganicWeb(W, H, Math.PI, Math.PI * 1.5, 4, 4, baseSize * 0.44, true); // Bottom-Right
+    } else {
+      // Full density desktop rendering
+      createOrganicWeb(0, 0, 0, Math.PI / 2, 7, 7, baseSize * 0.72, true); // Top-Left
+      createOrganicWeb(W, 0, Math.PI / 2, Math.PI, 6, 8, baseSize * 0.68, true); // Top-Right
+      createOrganicWeb(0, H, Math.PI * 1.5, Math.PI * 2, 8, 6, baseSize * 0.76, true); // Bottom-Left
+      createOrganicWeb(W, H, Math.PI, Math.PI * 1.5, 6, 7, baseSize * 0.64, true); // Bottom-Right
 
-    // Create 2 side/edge-anchored partial webs that look hand-spun
-    createOrganicWeb(0, H * 0.45, -Math.PI / 2.8, Math.PI / 2.8, 5, 5, baseSize * 0.44, true); // Left-Edge Anchor
-    createOrganicWeb(W, H * 0.55, Math.PI * 0.65, Math.PI * 1.35, 5, 5, baseSize * 0.44, true); // Right-Edge Anchor
+      // Create 2 side/edge-anchored partial webs that look hand-spun
+      createOrganicWeb(0, H * 0.45, -Math.PI / 2.8, Math.PI / 2.8, 5, 5, baseSize * 0.44, true); // Left-Edge Anchor
+      createOrganicWeb(W, H * 0.55, Math.PI * 0.65, Math.PI * 1.35, 5, 5, baseSize * 0.44, true); // Right-Edge Anchor
+    }
 
     // 4. Create stray/diagonal cross-stretching structural strands between distant parts of corners for high-fidelity realism
     if (outerNodesList.length > 5) {
-      for (let i = 0; i < 6; i++) {
+      const strandCount = isMobile ? 2 : 6;
+      for (let i = 0; i < strandCount; i++) {
         const u = outerNodesList[Math.floor(Math.random() * outerNodesList.length)];
         const v = outerNodesList[Math.floor(Math.random() * outerNodesList.length)];
         
@@ -798,7 +808,15 @@ export function SpiderWeb() {
         const controlY = midY + sagAmount + windY;
 
         // Rendering double-line glow strokes to resemble macro-photography of thin glowing silk
-        if (glow > 0.15 && !isMobile) {
+        if (isMobile) {
+          // Single lightweight path for maximum 60fps/120fps performance on mobile
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
+          ctx.strokeStyle = isDiagonal ? `rgba(110, 115, 244, ${alpha * 0.7})` : `rgba(135, 145, 248, ${alpha * 0.7})`;
+          ctx.lineWidth = width;
+          ctx.stroke();
+        } else if (glow > 0.15) {
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
@@ -830,11 +848,11 @@ export function SpiderWeb() {
       });
     }
 
-    function updateNodes(nodes: Node[], mouse: { x: number; y: number }, W: number, H: number) {
+    function updateNodes(nodes: Node[], mouse: { x: number; y: number }, W: number, H: number, delta: number) {
       const MOUSE_RADIUS = W < 768 ? 130 : 200; // broader interaction on desktop
       const MOUSE_STRENGTH = W < 768 ? 45 : 75; // stronger push
-      const SPRING = 0.05; // snappier spring
-      const DAMPING = 0.82; // cleaner settle down
+      const SPRING = 0.05 * delta; // snappier spring
+      const DAMPING = Math.pow(0.82, delta); // cleaner settle down
 
       nodes.forEach((node) => {
         const dx = mouse.x - node.x;
@@ -842,7 +860,7 @@ export function SpiderWeb() {
         const dist = Math.hypot(dx, dy);
 
         if (dist < MOUSE_RADIUS && dist > 0) {
-          const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * MOUSE_STRENGTH;
+          const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * MOUSE_STRENGTH * delta;
           node.vx -= (dx / dist) * force * 0.05;
           node.vy -= (dy / dist) * force * 0.05;
         }
@@ -854,8 +872,8 @@ export function SpiderWeb() {
         node.vx *= DAMPING;
         node.vy *= DAMPING;
 
-        node.x += node.vx;
-        node.y += node.vy;
+        node.x += node.vx * delta;
+        node.y += node.vy * delta;
 
         // Visual clamping inside bounds
         node.x = Math.max(0, Math.min(W, node.x));
@@ -863,14 +881,14 @@ export function SpiderWeb() {
       });
     }
 
-    function updateSpiders(spiders: Spider[], nodes: Node[]) {
+    function updateSpiders(spiders: Spider[], nodes: Node[], delta: number) {
       const now = Date.now();
       spiders.forEach((spider) => {
         if (spider.isDead) {
           // Slide down under gravity
-          spider.y += 2.2;
+          spider.y += 2.2 * delta;
           // slow spin
-          spider.legPhase += 0.05;
+          spider.legPhase += 0.05 * delta;
 
           const timeSinceDeath = now - (spider.deathTime || 0);
 
@@ -920,17 +938,33 @@ export function SpiderWeb() {
 
         if (dist < 2.5) {
           const ni = spider.nodeIndex;
-          const neighborCandidates = nodes[ni]?.neighbors || [];
+          let neighborCandidates = nodes[ni]?.neighbors || [];
 
-          if (neighborCandidates.length > 0) {
+          if (neighborCandidates.length === 0) {
+            const validNodes = nodes.filter(n => n.neighbors && n.neighbors.length > 0);
+            if (validNodes.length > 0) {
+              const randomNode = validNodes[Math.floor(Math.random() * validNodes.length)];
+              const newNi = nodes.indexOf(randomNode);
+              spider.nodeIndex = newNi;
+              spider.targetX = randomNode.x;
+              spider.targetY = randomNode.y;
+            }
+          } else {
             const newNi = neighborCandidates[Math.floor(Math.random() * neighborCandidates.length)];
             spider.nodeIndex = newNi;
             spider.targetX = nodes[newNi].x;
             spider.targetY = nodes[newNi].y;
           }
         } else {
-          spider.x += (dx / dist) * spider.speed;
-          spider.y += (dy / dist) * spider.speed;
+          // Move toward target with delta clamping to prevent overshoot or stuttering oscillations
+          const step = spider.speed * delta;
+          if (step >= dist) {
+            spider.x = spider.targetX;
+            spider.y = spider.targetY;
+          } else {
+            spider.x += (dx / dist) * step;
+            spider.y += (dy / dist) * step;
+          }
         }
 
         if (nodes[spider.nodeIndex]) {
@@ -938,7 +972,7 @@ export function SpiderWeb() {
           spider.targetY = nodes[spider.nodeIndex].y;
         }
 
-        spider.legPhase += spider.legSpeed;
+        spider.legPhase += spider.legSpeed * delta;
       });
     }
 
@@ -982,17 +1016,23 @@ export function SpiderWeb() {
       ctx.restore();
     }
 
-    function loop() {
-      timeRef.current += 1;
+    let lastTime = performance.now();
+
+    function loop(nowTime: number) {
+      // delta = 1.0 at standard 60fps (16.666 ms). Clamp between 0.1 and 3.0 to keep simulation stable.
+      const delta = Math.max(0.1, Math.min(3.0, (nowTime - lastTime) / 16.666));
+      lastTime = nowTime;
+
+      timeRef.current += delta;
       const time = timeRef.current;
-
+ 
       ctx.clearRect(0, 0, W, H);
-
-      updateNodes(nodesRef.current, mouseRef.current, W, H);
-      updateSpiders(spidersRef.current, nodesRef.current);
-
+ 
+      updateNodes(nodesRef.current, mouseRef.current, W, H, delta);
+      updateSpiders(spidersRef.current, nodesRef.current, delta);
+ 
       drawWeb(ctx, nodesRef.current, W, H);
-
+ 
       // Render spiders
       spidersRef.current.forEach((spider) => {
         const centerX = W / 2;
@@ -1003,10 +1043,10 @@ export function SpiderWeb() {
         const distToCenter = Math.hypot((spider.x - centerX) / radiusX, (spider.y - centerY) / radiusY);
         // Spiders fade sooner than lines so they never touch text
         const spiderFade = Math.min(1, Math.max(0, (distToCenter - 0.65) / 0.35));
-
+ 
         // Let dying spiders have full visibility as they fall out
         const finalAlpha = spider.isDead ? 1.0 : spiderFade;
-
+ 
         if (finalAlpha > 0) {
           ctx.save();
           ctx.globalAlpha = finalAlpha;
@@ -1014,60 +1054,59 @@ export function SpiderWeb() {
           ctx.restore();
         }
       });
-
+ 
       // Update & Render Splat Paint Particles
-      particlesRef.current.forEach((p, index) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.12; // mild gravity pull
-        p.alpha -= p.decay;
-
-        if (p.alpha <= 0) {
-          particlesRef.current.splice(index, 1);
-          return;
+      particlesRef.current.forEach((p) => {
+        p.x += p.vx * delta;
+        p.y += p.vy * delta;
+        p.vy += 0.12 * delta; // mild gravity pull
+        p.alpha -= p.decay * delta;
+ 
+        if (p.alpha > 0) {
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         }
-
-        ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
       });
-
+      // Correctly filter out dead particles to avoid indexing artifacts
+      particlesRef.current = particlesRef.current.filter((p) => p.alpha > 0);
+ 
       // Update & Render Floating Text Splats
-      floatTextsRef.current.forEach((t, index) => {
-        t.y += t.vy;
-        t.alpha -= 0.015;
-
-        if (t.alpha <= 0) {
-          floatTextsRef.current.splice(index, 1);
-          return;
+      floatTextsRef.current.forEach((t) => {
+        t.y += t.vy * delta;
+        t.alpha -= 0.015 * delta;
+ 
+        if (t.alpha > 0) {
+          ctx.save();
+          ctx.globalAlpha = t.alpha;
+          ctx.font = '800 11px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+ 
+          // subtle dark background offset
+          ctx.fillStyle = 'rgba(0,0,0,0.8)';
+          ctx.fillText(t.text, t.x + 1, t.y + 1);
+ 
+          ctx.fillStyle = '#67e8f9'; // glowing neon cyan
+          ctx.fillText(t.text, t.x, t.y);
+          ctx.restore();
         }
-
-        ctx.save();
-        ctx.globalAlpha = t.alpha;
-        ctx.font = '800 11px "JetBrains Mono", monospace';
-        ctx.textAlign = 'center';
-
-        // subtle dark background offset
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillText(t.text, t.x + 1, t.y + 1);
-
-        ctx.fillStyle = '#67e8f9'; // glowing neon cyan
-        ctx.fillText(t.text, t.x, t.y);
-        ctx.restore();
       });
-
+      // Correctly filter out dead float texts to avoid indexing artifacts
+      floatTextsRef.current = floatTextsRef.current.filter((t) => t.alpha > 0);
+ 
       // Render playable score HUD
       drawHUD(ctx, W, H, scoreRef.current);
-
+ 
       animFrameRef.current = requestAnimationFrame(loop);
     }
-
-    loop();
+ 
+    // Start animation loop with high resolution timestamp
+    animFrameRef.current = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);

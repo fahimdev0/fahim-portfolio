@@ -62,6 +62,23 @@ service cloud.firestore {
              data.timezone.size() <= 100;
     }
 
+    // free_sources Validation Helper
+    function isValidFreeSource(data) {
+      return data.keys().hasAll(['name', 'url', 'description', 'category', 'tags', 'instructions', 'stars', 'author', 'createdAt', 'userId']) &&
+             data.name is string &&
+             data.name.size() >= 2 && data.name.size() <= 100 &&
+             data.url is string &&
+             data.url.size() >= 5 && data.url.size() <= 500 &&
+             data.description is string &&
+             data.description.size() >= 5 && data.description.size() <= 2000 &&
+             data.category is string &&
+             data.tags is list &&
+             data.instructions is list &&
+             data.stars is string &&
+             data.author is string &&
+             data.userId is string;
+    }
+
     // Collection Security: Registrations
     match /community_registrations/{registrationId} {
       allow read: if isSignedIn() && (registrationId == request.auth.uid || isAdmin());
@@ -85,6 +102,13 @@ service cloud.firestore {
     match /page_views/{viewId} {
       allow create: if isValidId(viewId) && isValidPageView(incoming());
       allow read: if isAdmin();
+    }
+
+    // Collection Security: Free Sources Hub
+    match /free_sources/{sourceId} {
+      allow read: if true;
+      allow create: if isValidId(sourceId) && isValidFreeSource(incoming());
+      allow update, delete: if isAdmin();
     }
   }
 }

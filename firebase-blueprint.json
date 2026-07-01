@@ -50,6 +50,55 @@
         }
       },
       "required": ["timestamp", "country", "email", "timezone"]
+    },
+    "FreeSource": {
+      "title": "FreeSource",
+      "description": "User suggested or default open source utility proxy / tool",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the free tool"
+        },
+        "url": {
+          "type": "string",
+          "description": "GitHub/Access link for the free tool"
+        },
+        "description": {
+          "type": "string",
+          "description": "Explaining paragraph for the tool"
+        },
+        "category": {
+          "type": "string",
+          "description": "Categorized label"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Sub-keywords for searches"
+        },
+        "instructions": {
+          "type": "array",
+          "description": "Detailed setup instruction steps"
+        },
+        "stars": {
+          "type": "string",
+          "description": "GitHub stars count or contribution banner"
+        },
+        "author": {
+          "type": "string",
+          "description": "Name of author or contributor"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time of contribution"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Contributor auth identifier"
+        }
+      },
+      "required": ["name", "url", "description", "category", "tags", "instructions", "stars", "author", "createdAt", "userId"]
     }
   },
   "firestore": {
@@ -60,6 +109,10 @@
     "/page_views/{viewId}": {
       "schema": "PageView",
       "description": "Realtime page analytics logs for administration overview"
+    },
+    "/free_sources/{sourceId}": {
+      "schema": "FreeSource",
+      "description": "Free open-source tools and setup references"
     }
   }
 }

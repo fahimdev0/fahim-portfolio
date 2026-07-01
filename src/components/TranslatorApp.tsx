@@ -126,7 +126,7 @@ export const TranslatorApp = ({ onBack }: { onBack: () => void }) => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Paste text or message here in any language..."
-              className="w-full min-h-[140px] bg-[#121214] border border-white/10 rounded-2xl p-4 sm:p-5 pb-20 sm:pb-24 text-white placeholder-white/30 outline-none resize-none focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.1)] transition-all leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap overflow-y-auto"
+              className="w-full min-h-[140px] bg-[#121214] border border-white/10 rounded-2xl p-4 sm:p-5 pb-20 sm:pb-24 text-base text-white placeholder-white/30 outline-none resize-none focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.1)] transition-all leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap overflow-y-auto"
             />
             
             {/* Style Selector inside input area bottom right */}

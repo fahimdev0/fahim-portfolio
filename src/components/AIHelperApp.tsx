@@ -4,15 +4,16 @@ import {
   ChevronLeft, Send, Sparkles, Bot, User, Loader2, Plus, ArrowUp, Copy, Check,
   FileText, Settings, ToggleLeft, ToggleRight, Image, HelpCircle, HardDrive, 
   Cpu, Zap, Eye, Sliders, Trash2, ShieldCheck, BookOpen, Terminal, Code, Info, 
-  Download, Maximize2, X, AlertCircle, FileSpreadsheet, RefreshCw, Sun, Moon, Menu
+  Download, Maximize2, X, AlertCircle, FileSpreadsheet, RefreshCw, Sun, Moon, Menu,
+  MessageSquare
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { vscDarkPlus, prism } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 // --- COPY BUTTON UTILITY ---
-const CopyButton = ({ text }: { text: string }) => {
+const CopyButton = ({ text, isDarkMode = true }: { text: string; isDarkMode?: boolean }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -25,10 +26,14 @@ const CopyButton = ({ text }: { text: string }) => {
   return (
     <button
       onClick={handleCopy}
-      className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-all flex items-center gap-1.5 cursor-pointer"
+      className={`p-1.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
+        isDarkMode 
+          ? "bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80" 
+          : "bg-slate-200/50 hover:bg-slate-200 text-slate-500 hover:text-slate-800"
+      }`}
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-      <span className="text-xs font-medium">{copied ? "Copied" : "Copy"}</span>
+      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+      <span className="text-[11px] font-medium">{copied ? "Copied" : "Copy"}</span>
     </button>
   );
 };
@@ -53,15 +58,24 @@ interface ChatMessage {
   imageUrl?: string;
 }
 
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+}
+
 export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
   // --- STATE SYSTEM ---
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false); // Clean Gemini Light Mode by default
   
   // Prime Parameters
-  const [selectedModel, setSelectedModel] = useState<"cipher" | "tutor8b">("cipher");
+  const [selectedModel, setSelectedModel] = useState<"cipher" | "tutor8b" | "claude">("cipher");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(true);
   const [isImageMode, setIsImageMode] = useState(false);
   const [longerMemory, setLongerMemory] = useState(true);
@@ -73,25 +87,208 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
   const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
   const [fileSelectorActive, setFileSelectorActive] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default for ultra-clean look
+  const [isMobileParamsOpen, setIsMobileParamsOpen] = useState(false);
   
   // Image magnification view
   const [magnifiedImage, setMagnifiedImage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (instant = false) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: instant ? "auto" : "smooth",
+        block: "end"
+      });
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // Premium auto-resizing text field
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
+    }
+  }, [input]);
+
   // Simulate network speeds dynamically on turn completion
   const updateSpeedStat = () => {
     const latencies = ["0.18s", "0.22s", "0.28s", "0.34s", "0.41s", "0.15s"];
     setActiveSpeed(latencies[Math.floor(Math.random() * latencies.length)]);
+  };
+
+  // --- SESSION MANAGEMENT & MEMORY CONTINUITY ---
+  // Load sessions on mount
+  useEffect(() => {
+    const savedSessions = localStorage.getItem("fahim_ai_helper_sessions");
+    const savedActiveId = localStorage.getItem("fahim_ai_helper_active_session_id");
+    
+    let loadedSessions: ChatSession[] = [];
+    let loadedActiveId: string | null = null;
+    
+    if (savedSessions) {
+      try {
+        const parsed = JSON.parse(savedSessions);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedSessions = parsed;
+        }
+      } catch (e) {
+        console.error("Failed to parse saved sessions:", e);
+      }
+    }
+    
+    if (loadedSessions.length === 0) {
+      const defaultId = "session_" + Date.now();
+      loadedSessions = [{
+        id: defaultId,
+        title: "New Chat",
+        messages: [],
+        createdAt: Date.now()
+      }];
+      loadedActiveId = defaultId;
+    } else {
+      if (savedActiveId && loadedSessions.some(s => s.id === savedActiveId)) {
+        loadedActiveId = savedActiveId;
+      } else {
+        loadedActiveId = loadedSessions[0].id;
+      }
+    }
+    
+    setSessions(loadedSessions);
+    setActiveSessionId(loadedActiveId);
+    
+    const activeSess = loadedSessions.find(s => s.id === loadedActiveId);
+    if (activeSess) {
+      setMessages(activeSess.messages);
+    }
+  }, []);
+
+  // Save current active session messages whenever they change
+  useEffect(() => {
+    if (!activeSessionId || sessions.length === 0) return;
+    
+    // Check if anything actually changed to prevent loops
+    const currentSession = sessions.find(s => s.id === activeSessionId);
+    if (currentSession && JSON.stringify(currentSession.messages) === JSON.stringify(messages)) {
+      return;
+    }
+    
+    setSessions(prev => {
+      const updated = prev.map(s => {
+        if (s.id === activeSessionId) {
+          let title = s.title;
+          if ((title === "New Chat" || title === "নতুন চ্যাট" || title.startsWith("Chat Session")) && messages.length > 0) {
+            const firstUser = messages.find(m => m.role === "user");
+            if (firstUser) {
+              title = firstUser.content.slice(0, 24) + (firstUser.content.length > 24 ? "..." : "");
+            }
+          }
+          return { ...s, messages, title };
+        }
+        return s;
+      });
+      localStorage.setItem("fahim_ai_helper_sessions", JSON.stringify(updated));
+      return updated;
+    });
+  }, [messages, activeSessionId]);
+
+  // Keep localStorage activeSessionId in sync
+  useEffect(() => {
+    if (activeSessionId) {
+      localStorage.setItem("fahim_ai_helper_active_session_id", activeSessionId);
+    }
+  }, [activeSessionId]);
+
+  const handleNewChat = () => {
+    const newId = "session_" + Date.now();
+    const newSession: ChatSession = {
+      id: newId,
+      title: "New Chat",
+      messages: [],
+      createdAt: Date.now()
+    };
+    
+    setSessions(prev => {
+      const updated = [newSession, ...prev];
+      localStorage.setItem("fahim_ai_helper_sessions", JSON.stringify(updated));
+      return updated;
+    });
+    
+    setActiveSessionId(newId);
+    setMessages([]);
+    setUploadedFiles([]);
+  };
+
+  const handleSwitchSession = (sessionId: string) => {
+    const sess = sessions.find(s => s.id === sessionId);
+    if (sess) {
+      setActiveSessionId(sessionId);
+      setMessages(sess.messages);
+      setUploadedFiles([]);
+    }
+  };
+
+  const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    
+    setSessions(prev => {
+      const updated = prev.filter(s => s.id !== sessionId);
+      
+      if (updated.length === 0) {
+        const defaultId = "session_" + Date.now();
+        const defaultSession: ChatSession = {
+          id: defaultId,
+          title: "New Chat",
+          messages: [],
+          createdAt: Date.now()
+        };
+        setTimeout(() => {
+          setActiveSessionId(defaultId);
+          setMessages([]);
+        }, 0);
+        const finalSessions = [defaultSession];
+        localStorage.setItem("fahim_ai_helper_sessions", JSON.stringify(finalSessions));
+        return finalSessions;
+      }
+      
+      if (sessionId === activeSessionId) {
+        const nextActive = updated[0].id;
+        setTimeout(() => {
+          setActiveSessionId(nextActive);
+          const activeSess = updated.find(s => s.id === nextActive);
+          if (activeSess) setMessages(activeSess.messages);
+        }, 0);
+      }
+      
+      localStorage.setItem("fahim_ai_helper_sessions", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const getMemoryContext = () => {
+    const otherSessions = sessions.filter(s => s.id !== activeSessionId);
+    if (otherSessions.length === 0) return "";
+
+    const memorySnippets: string[] = [];
+    otherSessions.forEach(sess => {
+      const userMsgs = sess.messages.filter(m => m.role === "user");
+      
+      if (userMsgs.length > 0) {
+        const firstUser = userMsgs[0].content;
+        memorySnippets.push(`- Topic from earlier discussion "${sess.title}": User asked: "${firstUser.slice(0, 80)}${firstUser.length > 80 ? '...' : ''}"`);
+      }
+    });
+
+    if (memorySnippets.length === 0) return "";
+
+    return `\n\n--- DYNAMIC CONVERSATION MEMORY CONTINUITY (DO NOT IGNORE) ---\nThis is information and context retained from your previous conversations with the user (Fahim Siam). Use this to maintain context continuity, remember his preferences, name, and earlier tasks if he refers to them:\n${memorySnippets.slice(0, 5).join("\n")}\n--- END MEMORY PROFILE ---`;
   };
 
   // --- CORE FILE HANDLING ---
@@ -209,6 +406,16 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
           systemPrompt: `You are Fahim AI Helper, a world-class, globally-oriented premium AI assistant built on Atomesus Prime.
 You have exceptional multilingual capabilities (English, Bangla, Spanish, Arabic, Chinese, French, etc.), layout reconstruction, and technical logic.
 
+LANGUAGE STYLE & ADAPTIVE DETECTION RULES:
+- Carefully detect the language and script of the user's message.
+- IF THE USER CHATS IN BANGLISH (Bengali language written in English/Roman letters, e.g., "kemon acho", "ki obostha", "bhalo", "kajta kora jabe?"):
+  - You MUST respond in fluent, casual, natural BANGLISH (Bengali language written in English letters). Use spelling patterns matching a native Bengali speaker chatting (e.g. "ami bhalo achi, apnar ki obostha?", "hobe, obossoi kora jabe!"). Avoid formal or awkward transliterations. Keep it friendly and conversational.
+- IF THE USER WRITES IN PURE BANGLA SCRIPT (বাংলা হরফে, e.g., "কেমন আছেন", "কি খবর"):
+  - You MUST reply in flawless, perfect, natural Standard Bangla script (বাংলা). Ensure correct grammar and beautiful flow.
+- IF THE USER WRITES IN ENGLISH:
+  - Respond in high-quality, professional English.
+- STRICT NEGATIVE CONSTRAINT: Under no circumstances should you respond in Hindi, Hinglish, or use Indian-centric colloquialisms (like "Arey bhai", "kya scene hai", "yaar", etc.), unless explicitly asked to translate to Hindi. Always prioritize Fahim's requested tone.
+
 PRIMARY BEHAVIOR DIRECTIVES (ACT EXACTLY LIKE CHATGPT OR GEMINI):
 1. Your primary objective is to answer the user's exact question directly, accurately, and efficiently. Prioritize the user's explicit request above all else.
 2. Always answer the user's actual question first. Answer directly before giving any additional context.
@@ -233,15 +440,16 @@ Maximize helpfulness, accuracy, completeness, and directness while remaining tru
 CRITICAL IDENTITY & GEOGRAPHICAL DIRECTIVES:
 1. You are a WORLDWIDE and GLOBAL AI assistant. You are NOT an Indian AI, nor should you assume Indian contexts, Indian language defaults (such as Hindi), Indian culture, Indian laws, or Indian currency (Rupees) unless explicitly asked by the user.
 2. Maintain a fully international perspective. Always default to globally accepted formats, international currencies (such as USD/EUR), and standard global English or beautiful native Bangla as appropriate.
-3. If the user writes or speaks in Bengali (Bangla) or Romanized/transliterated Bengali (Benglish, e.g., "ki obostha", "kemon acho", "bhalo achi", "ki khobor", "vai"), you MUST reply in beautiful standard Bengali (বাংলা) or fluent English. You are STRICTLY FORBIDDEN from responding in Hindi, Romanized Hindi, or Hinglish (e.g., "kya scene hai", "arre bhai", "kaise ho").
-4. You must provide absolutely perfect, mathematically sound, factually accurate, and highly sophisticated answers with zero introductory fluff or filler.
+3. You must provide absolutely perfect, mathematically sound, factually accurate, and highly sophisticated answers with zero introductory fluff or filler.
 
 FORMATTING:
-Output clear, direct, perfectly styled markdown responses with clean syntax highlighting. Avoid conversational filler if answering coding or document analysis tasks.`,
+Output clear, direct, perfectly styled markdown responses with clean syntax highlighting. Avoid conversational filler if answering coding or document analysis tasks.
+${getMemoryContext()}`,
           messages: [
             ...messages.filter(m => m.role !== "system" && !m.imageUrl).map(m => ({ role: m.role, content: m.content })),
             { role: "user", content: processedContent }
-          ]
+          ],
+          attachments: currentAttachments
         })
       });
 
@@ -256,7 +464,11 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
       const thinkingSteps = isReasoningEnabled 
         ? [
             "Deconstructing user prompt & mapping bilingual vocabulary...",
-            selectedModel === "tutor8b" ? "Consulting Tutor8B logical instruction set..." : "Routing query through Cipher prime attention sequence...",
+            selectedModel === "tutor8b" 
+              ? "Consulting Tutor8B logical instruction set..." 
+              : selectedModel === "claude" 
+                ? "Connecting to Anthropic Claude super-node sequence..." 
+                : "Routing query through Cipher prime attention sequence...",
             currentAttachments.length > 0 ? `Integrating data from ${currentAttachments.length} document assets...` : "Extracting context memories...",
             "Validating factual accuracy & generating final response stream..."
           ]
@@ -294,9 +506,16 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
     }
   };
 
+  const handleSuggestionClick = (prompt: string) => {
+    setInput(prompt);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+  };
+
   return (
     <div className={`w-full h-full flex overflow-hidden font-sans select-none transition-colors duration-300 ${
-      isDarkMode ? "bg-[#05060f] text-slate-100" : "bg-white text-slate-800"
+      isDarkMode ? "bg-[#05060f] text-slate-100" : "bg-[#f9fbfc] text-slate-800"
     }`}>
       <style>{`
         /* Global Custom Scrollbars */
@@ -349,7 +568,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
 
           {/* New Chat Button (Plus Icon) */}
           <button
-            onClick={() => setMessages([])}
+            onClick={handleNewChat}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm relative group ${
               isDarkMode 
                 ? "bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/20" 
@@ -366,8 +585,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
           {/* Session Logs Icon */}
           <button
             onClick={() => {
-              const modal = document.getElementById("mobile_params_modal");
-              if (modal) modal.classList.remove("hidden");
+              setIsMobileParamsOpen(true);
             }}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer group relative ${
               isDarkMode ? "hover:bg-white/5 text-slate-300" : "hover:bg-[#dde3ea] text-slate-700"
@@ -473,6 +691,58 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
             {/* Params scroll list */}
             <div className="flex-grow overflow-y-auto p-4 space-y-5 no-scrollbar">
               
+              {/* Feature 0: Chat History / Sessions */}
+              <div className="space-y-2 pb-3 border-b border-dashed border-slate-800/20">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] uppercase font-black tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
+                    Chat History
+                  </label>
+                  <button 
+                    onClick={handleNewChat}
+                    className="text-[10px] font-black text-indigo-500 hover:text-indigo-600 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> New
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 no-scrollbar">
+                  {sessions.length === 0 ? (
+                    <p className="text-[10px] text-slate-500 italic p-2">No saved chats</p>
+                  ) : (
+                    sessions.map(sess => (
+                      <div 
+                        key={sess.id}
+                        onClick={() => handleSwitchSession(sess.id)}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all group ${
+                          activeSessionId === sess.id
+                            ? isDarkMode
+                              ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.06)]"
+                              : "bg-indigo-50 border-indigo-200 text-indigo-900 shadow-sm"
+                            : isDarkMode
+                              ? "bg-[#0f111f]/40 border-slate-800/60 hover:border-slate-700/80 text-slate-400 hover:text-slate-200 hover:bg-[#111326]/60"
+                              : "bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden flex-grow">
+                          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeSessionId === sess.id ? 'text-indigo-500' : 'text-slate-400'}`} />
+                          <span className="text-[11px] font-bold truncate">{sess.title}</span>
+                        </div>
+                        <button 
+                          onClick={(e) => handleDeleteSession(e, sess.id)}
+                          className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer ${
+                            isDarkMode ? "text-slate-500 hover:text-red-400 hover:bg-white/5" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"
+                          }`}
+                          title="Delete Conversation"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
               {/* Feature 1: Model Selection */}
               <div className="space-y-2">
                 <label className="text-[9px] uppercase font-black tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -527,6 +797,31 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                     </div>
                     {selectedModel === "tutor8b" && (
                       <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedModel("claude")}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 relative overflow-hidden group ${
+                      selectedModel === "claude"
+                        ? isDarkMode
+                          ? "bg-amber-600/10 border-amber-500/50 text-white shadow-[0_0_15px_rgba(245,158,11,0.08)]"
+                          : "bg-amber-50 border-amber-200 text-amber-900 shadow-sm"
+                        : isDarkMode
+                          ? "bg-white/[0.01] border-slate-800/80 hover:border-slate-700/80 text-slate-300 hover:bg-white/[0.03]"
+                          : "bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full transition-all duration-300 ${selectedModel === "claude" ? "bg-amber-500 scale-125 shadow-[0_0_8px_#f59e0b]" : "bg-slate-400"}`} />
+                    <div className="relative z-10">
+                      <div className={`text-xs font-bold flex items-center gap-1.5 ${isDarkMode ? "text-slate-100" : "text-slate-800"}`}>
+                        Claude Sonnet
+                        <span className="text-[8px] font-extrabold text-amber-500 bg-amber-500/15 px-1.5 py-0.5 rounded uppercase tracking-wider">Claude API</span>
+                      </div>
+                      <p className={`text-[10px] mt-0.5 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>Premium Anthropic Claude 4.6</p>
+                    </div>
+                    {selectedModel === "claude" && (
+                      <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full bg-amber-500" />
                     )}
                   </button>
                 </div>
@@ -748,7 +1043,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
 
       {/* --- MAIN CHAT SPACE --- */}
       <div className={`flex-grow flex flex-col h-full min-w-0 relative overflow-hidden transition-colors duration-300 ${
-        isDarkMode ? "bg-[#05060f] text-slate-100" : "bg-white text-slate-800"
+        isDarkMode ? "bg-[#05060f] text-slate-100" : "bg-[#f9fbfc] text-slate-800"
       }`}>
         {/* --- DYNAMIC RADIAL BACKGROUND GLOW --- */}
         <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
@@ -761,7 +1056,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
         <header className={`h-16 shrink-0 border-b backdrop-blur-md flex items-center justify-between px-4 sm:px-6 relative z-10 transition-colors duration-300 ${
           isDarkMode 
             ? "border-[#1e2238]/40 bg-[#080914]/85 text-white" 
-            : "border-slate-100 bg-white/80 text-slate-800 shadow-sm"
+            : "border-slate-200/50 bg-white/90 text-slate-800 shadow-xs"
         }`}>
           <div className="flex items-center gap-3">
             <button 
@@ -793,14 +1088,17 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                     PRIME
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 mt-1 leading-none">
+                <button 
+                  onClick={() => setIsMobileParamsOpen(true)}
+                  className="flex items-center gap-1.5 mt-1 leading-none hover:opacity-80 transition-opacity cursor-pointer group text-left"
+                >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                  <span className={`text-[9px] font-bold uppercase tracking-wider group-hover:text-indigo-400 transition-colors ${
                     isDarkMode ? "text-slate-400" : "text-slate-500"
                   }`}>
-                    {selectedModel === "tutor8b" ? "Tutor8B Active" : "Cipher Core"}
+                    {selectedModel === "tutor8b" ? "Tutor8B Active ∨" : selectedModel === "claude" ? "Claude Active ∨" : "Cipher Core ∨"}
                   </span>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -809,18 +1107,15 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* New Chat Button (Desktop & Mobile) */}
             <button
-              onClick={() => {
-                setMessages([]);
-                setUploadedFiles([]);
-              }}
+              onClick={handleNewChat}
               className={`px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
                 isDarkMode 
-                  ? "bg-white/[0.03] hover:bg-white/[0.08] text-rose-400 hover:text-rose-300 border border-slate-800/80 hover:border-slate-700/80" 
-                  : "bg-slate-50 hover:bg-slate-100 text-rose-600 hover:text-rose-700 border border-slate-200 hover:border-slate-300"
+                  ? "bg-white/[0.03] hover:bg-white/[0.08] text-indigo-400 hover:text-indigo-300 border border-slate-800/80 hover:border-slate-700/80" 
+                  : "bg-slate-50 hover:bg-slate-100 text-indigo-600 hover:text-indigo-700 border border-slate-200 hover:border-slate-300"
               }`}
-              title="Start a Fresh Chat Session (Clears Context)"
+              title="Start a Fresh Chat Session (Saves previous)"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">New Chat</span>
             </button>
 
@@ -854,8 +1149,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
             {/* Mobile Sidebar overlay toggle */}
             <button
               onClick={() => {
-                const modal = document.getElementById("mobile_params_modal");
-                if (modal) modal.classList.toggle("hidden");
+                setIsMobileParamsOpen(true);
               }}
               className={`p-2.5 rounded-xl transition-all cursor-pointer flex md:hidden items-center gap-1.5 text-xs font-bold ${
                 isDarkMode 
@@ -869,7 +1163,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
         </header>
 
         {/* --- MESSAGES CONTENT FIELD --- */}
-        <div className="flex-grow overflow-y-auto px-4 sm:px-6 py-6 space-y-6 scroll-smooth no-scrollbar">
+        <div className="flex-grow min-h-0 overflow-y-auto px-4 sm:px-6 py-6 space-y-6 scroll-smooth no-scrollbar">
           
           <AnimatePresence initial={false}>
             {messages.map((msg) => (
@@ -879,19 +1173,19 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex gap-3.5 max-w-[95%] sm:max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex gap-2 sm:gap-3.5 max-w-[98%] sm:max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   
                   {/* Visual avatars */}
-                  <div className={`shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border transition-all ${
+                  <div className={`shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center border transition-all ${
                     msg.role === 'user' 
                       ? 'bg-blue-600/10 border-blue-500/25 text-blue-500 shadow-md shadow-blue-500/5 ring-1 ring-blue-500/10' 
                       : 'bg-indigo-600/10 border-indigo-500/25 text-indigo-500 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/10'
                   }`}>
-                    {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                    {msg.role === 'user' ? <User className="w-4 h-4 sm:w-5 sm:h-5" /> : <Bot className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </div>
 
                   {/* Message Bubble Column */}
-                  <div className="space-y-1.5 w-full">
+                  <div className="space-y-1.5 w-full min-w-0">
                     
                     {/* Model & Source metadata tags */}
                     <div className="flex items-center gap-2 px-1">
@@ -905,14 +1199,14 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                       )}
                     </div>
 
-                    <div className={`p-4 sm:p-5 rounded-2xl transition-colors duration-300 ${
+                    <div className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 min-w-0 w-full ${
                       msg.role === 'user'
                         ? isDarkMode
                           ? 'bg-gradient-to-br from-indigo-600/90 via-indigo-600 to-indigo-700/90 border border-indigo-500/35 text-white rounded-tr-none shadow-lg shadow-indigo-600/10'
-                          : 'bg-[#f0f4f9] border border-slate-200/50 text-slate-800 rounded-tr-none shadow-sm font-medium'
+                          : 'bg-[#edf3ff] border border-blue-100 text-slate-800 rounded-tr-none shadow-xs font-semibold'
                         : isDarkMode
                           ? 'bg-[#0b0c16] border border-[#1e2238]/60 text-slate-100 rounded-tl-none shadow-md'
-                          : 'bg-slate-50 border border-slate-200/60 text-slate-800 rounded-tl-none shadow-sm'
+                          : 'bg-white border border-slate-200/80 text-slate-800 rounded-tl-none shadow-xs'
                     }`}>
                       
                       {/* --- THINKING ACCORDION SIMULATED --- */}
@@ -920,7 +1214,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                         <details className={`mb-4 group border rounded-xl overflow-hidden transition-colors duration-300 ${
                           isDarkMode 
                             ? 'border-[#1e2238]/50 bg-[#070911]/90' 
-                            : 'border-slate-200 bg-slate-100'
+                            : 'border-slate-200/80 bg-slate-50'
                         }`}>
                           <summary className={`p-3 text-xs font-bold cursor-pointer select-none flex items-center gap-2 transition-colors ${
                             isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -933,7 +1227,7 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                           <div className={`p-3 border-t space-y-2 transition-colors ${
                             isDarkMode 
                               ? 'border-[#1e2238]/30 bg-[#04050a]' 
-                              : 'border-slate-200 bg-white'
+                              : 'border-slate-200/50 bg-white'
                           }`}>
                             {msg.thinkingProcess.map((step, sIdx) => (
                               <div key={sIdx} className={`flex items-center gap-2 text-[10px] font-mono ${
@@ -999,11 +1293,11 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                                       isDarkMode ? "bg-black/40 border-[#1e2238]/50 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600"
                                     }`}>
                                       <span className="text-[10px] font-mono uppercase tracking-widest">{match?.[1] || 'text'}</span>
-                                      <CopyButton text={codeString} />
+                                      <CopyButton text={codeString} isDarkMode={isDarkMode} />
                                     </div>
                                     <SyntaxHighlighter
                                       {...props}
-                                      style={vscDarkPlus}
+                                      style={isDarkMode ? vscDarkPlus : prism}
                                       language={match ? match[1] : 'text'}
                                       PreTag="div"
                                       className="!m-0 !bg-transparent !p-4 !overflow-x-auto text-xs sm:text-sm leading-relaxed"
@@ -1019,6 +1313,73 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                                     {children}
                                   </code>
                                 );
+                              },
+                              h1({ children }: any) {
+                                return <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight mt-5 mb-2.5 transition-colors ${isDarkMode ? "text-indigo-400" : "text-indigo-600"}`}>{children}</h1>;
+                              },
+                              h2({ children }: any) {
+                                return <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-4 mb-2 transition-colors ${isDarkMode ? "text-sky-400" : "text-sky-600"}`}>{children}</h2>;
+                              },
+                              h3({ children }: any) {
+                                return <h3 className={`text-sm sm:text-base font-bold mt-3 mb-1.5 transition-colors ${isDarkMode ? "text-slate-200" : "text-slate-800"}`}>{children}</h3>;
+                              },
+                              p({ children }: any) {
+                                return <p className="leading-relaxed mb-3 text-sm sm:text-[15px]">{children}</p>;
+                              },
+                              ul({ children }: any) {
+                                return <ul className="list-disc pl-5 mb-3.5 space-y-1.5">{children}</ul>;
+                              },
+                              ol({ children }: any) {
+                                return <ol className="list-decimal pl-5 mb-3.5 space-y-1.5">{children}</ol>;
+                              },
+                              li({ children }: any) {
+                                return <li className="text-sm sm:text-[15px] leading-relaxed">{children}</li>;
+                              },
+                              blockquote({ children }: any) {
+                                return <blockquote className={`border-l-4 border-indigo-500 pl-4 py-1 italic my-4 ${
+                                  isDarkMode ? "text-slate-400" : "text-slate-500"
+                                }`}>{children}</blockquote>;
+                              },
+                              a({ href, children }: any) {
+                                return (
+                                  <a 
+                                    href={href} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 underline font-semibold transition-colors"
+                                  >
+                                    {children}
+                                  </a>
+                                );
+                              },
+                              table({ children }: any) {
+                                return (
+                                  <div className={`overflow-x-auto my-4 rounded-xl border shadow-xs max-w-full ${
+                                    isDarkMode ? "border-slate-800/80 bg-[#070811]/30" : "border-slate-200"
+                                  }`}>
+                                    <table className={`min-w-full divide-y text-xs sm:text-sm ${
+                                      isDarkMode ? "divide-slate-800" : "divide-slate-200"
+                                    }`}>{children}</table>
+                                  </div>
+                                );
+                              },
+                              thead({ children }: any) {
+                                return <thead className={isDarkMode ? "bg-[#0c0e1a]" : "bg-slate-50"}>{children}</thead>;
+                              },
+                              th({ children }: any) {
+                                return <th className={`px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider border-b ${
+                                  isDarkMode ? "text-slate-400 border-slate-800" : "text-slate-500 border-slate-200"
+                                }`}>{children}</th>;
+                              },
+                              td({ children }: any) {
+                                return <td className={`px-4 py-2.5 border-b text-xs sm:text-sm ${
+                                  isDarkMode ? "text-slate-300 border-slate-800/40" : "text-slate-600 border-slate-100"
+                                }`}>{children}</td>;
+                              },
+                              tr({ children }: any) {
+                                return <tr className={`transition-colors ${
+                                  isDarkMode ? "hover:bg-slate-900/30" : "hover:bg-slate-50/50"
+                                }`}>{children}</tr>;
                               }
                             }}
                           >
@@ -1064,144 +1425,92 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
                 </div>
               </motion.div>
             ))}            {/* --- WELCOME HOME BENTO GRID --- */}
-            {messages.length === 0 && (
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="max-w-3xl mx-auto py-8 sm:py-12 space-y-8"
-              >
-                {/* Central Header */}
-                <div className="text-center space-y-3">
-                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-colors duration-300 ${
-                    isDarkMode ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400" : "bg-indigo-50 border border-indigo-100 text-indigo-600"
-                  }`}>
-                    <Sparkles className="w-3.5 h-3.5" /> Fahim AI Hub
-                  </div>
-                  <h2 className={`text-3xl sm:text-5xl font-semibold tracking-tight leading-tight transition-colors duration-300 ${
-                    isDarkMode ? "text-slate-200" : "text-slate-800"
-                  }`}>
-                    What can I help with, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-500 font-extrabold">FAHIM SIAM</span>?
-                  </h2>
-                  <p className={`text-xs sm:text-sm max-w-lg mx-auto transition-colors duration-300 ${
-                    isDarkMode ? "text-slate-400" : "text-slate-500 font-medium"
-                  }`}>
-                    Your highly operational, multi-engine Prime assistant. Replicate custom documents, run complex logic, generate high-fidelity artworks, or analyze structures with advanced reasoning.
-                  </p>
-                </div>
+            {messages.length === 0 && (() => {
+              const suggestions = [
+                {
+                  title: "Clean Code Refactor",
+                  description: "Optimize layout logic and structures in React",
+                  prompt: "Deconstruct and optimize a piece of logic or complex algorithm in React with beautiful modular code.",
+                  icon: Code,
+                  color: "text-blue-500 bg-blue-500/10 border-blue-500/20"
+                },
+                {
+                  title: "Banglish Translation",
+                  description: "Convert text into natural, friendly Banglish chat",
+                  prompt: "Bhai, translate this text into flawless, fluent, natural Banglish chat style.",
+                  icon: BookOpen,
+                  color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+                },
+                {
+                  title: "Pristine Layout Builder",
+                  description: "Draft gorgeous multi-tool visual components",
+                  prompt: "Generate a fully isolated component file layout utilizing Tailwind CSS, responsive grids, and modern typography.",
+                  icon: Sparkles,
+                  color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20"
+                },
+                {
+                  title: "Atomesus Image Studio",
+                  description: "Type /image to create stunning vector artwork",
+                  prompt: "/image Create a pristine, high-fidelity vector illustration of a modern futuristic workspace.",
+                  icon: Image,
+                  color: "text-pink-500 bg-pink-500/10 border-pink-500/20"
+                }
+              ];
 
-                {/* Grid of cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div 
-                    onClick={() => applyPresetPrompt("Create a bilingual Bangla-English deed template for real estate agreement with 3 sections.")}
-                    className={`p-5 rounded-2xl transition-all group cursor-pointer space-y-3 flex flex-col justify-between ${
-                      isDarkMode 
-                        ? "bg-[#0c0e1a]/85 border border-slate-800/80 hover:border-indigo-500/30 hover:bg-[#111326]" 
-                        : "bg-[#f0f4f9] border border-slate-200/50 hover:bg-slate-200/60 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                        isDarkMode ? "bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white" : "bg-white text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
-                      }`}>
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase text-indigo-500 tracking-wider">Deed Writer</span>
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="max-w-3xl mx-auto py-16 sm:py-24 flex flex-col items-center justify-center text-center px-4"
+                >
+                  <div className="space-y-4">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 mb-2 shadow-lg shadow-indigo-500/5 animate-pulse">
+                      <Sparkles className="w-7 h-7" />
                     </div>
-                    <div>
-                      <h4 className={`text-sm font-bold transition-colors ${
-                        isDarkMode ? "text-white group-hover:text-indigo-300" : "text-slate-800 group-hover:text-indigo-600"
-                      }`}>Draft Bilingual Deed</h4>
-                      <p className={`text-[11px] mt-1 leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500 font-medium"}`}>Generate a beautifully formatted contract layout with accurate bilingual mappings.</p>
-                    </div>
+                    <h2 className={`text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight transition-colors duration-300 ${
+                      isDarkMode ? "text-slate-100" : "text-slate-800"
+                    }`}>
+                      Hi, I am <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-500">Fahim AI</span>, how can I help you today?
+                    </h2>
                   </div>
 
-                  <div 
-                    onClick={() => applyPresetPrompt("Draft a digital e-Trade License mock template for DNCC including signs and fees table.")}
-                    className={`p-5 rounded-2xl transition-all group cursor-pointer space-y-3 flex flex-col justify-between ${
-                      isDarkMode 
-                        ? "bg-[#0c0e1a]/85 border border-slate-800/80 hover:border-blue-500/30 hover:bg-[#111326]" 
-                        : "bg-[#f0f4f9] border border-slate-200/50 hover:bg-slate-200/60 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                        isDarkMode ? "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500 group-hover:text-white" : "bg-white text-blue-600 group-hover:bg-blue-600 group-hover:text-white"
-                      }`}>
-                        <FileSpreadsheet className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider">Layout OCR</span>
-                    </div>
-                    <div>
-                      <h4 className={`text-sm font-bold transition-colors ${
-                        isDarkMode ? "text-white group-hover:text-blue-300" : "text-slate-800 group-hover:text-blue-600"
-                      }`}>e-Trade License Structure</h4>
-                      <p className={`text-[11px] mt-1 leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500 font-medium"}`}>Construct official City Corporation mock layouts, coordinates, and pricing tables.</p>
-                    </div>
+                  {/* --- STARTER CARDS GRID --- */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-10 w-full max-w-2xl text-left">
+                    {suggestions.map((card, idx) => {
+                      const CardIcon = card.icon;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => handleSuggestionClick(card.prompt)}
+                          className={`p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.015] hover:shadow-md cursor-pointer group flex gap-3.5 ${
+                            isDarkMode
+                              ? "bg-[#0c0d18]/60 border-slate-800 hover:border-indigo-500/40 hover:bg-[#0e1022]"
+                              : "bg-white border-slate-200/80 hover:border-indigo-500/30 hover:bg-slate-50/50 shadow-xs shadow-slate-100"
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${card.color}`}>
+                            <CardIcon className="w-5.5 h-5.5" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <h4 className={`text-xs font-bold transition-colors ${
+                              isDarkMode ? "text-slate-200 group-hover:text-indigo-400" : "text-slate-800 group-hover:text-indigo-600"
+                            }`}>
+                              {card.title}
+                            </h4>
+                            <p className={`text-[11px] leading-normal mt-1 ${
+                              isDarkMode ? "text-slate-400" : "text-slate-500"
+                            }`}>
+                              {card.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-
-                  <div 
-                    onClick={() => {
-                      setIsImageMode(true);
-                      applyPresetPrompt("/image A beautiful majestic cyber Bengal Tiger wearing security spectacles, realistic, neon lights");
-                    }}
-                    className={`p-5 rounded-2xl transition-all group cursor-pointer space-y-3 flex flex-col justify-between ${
-                      isDarkMode 
-                        ? "bg-[#0c0e1a]/85 border border-slate-800/80 hover:border-pink-500/30 hover:bg-[#111326]" 
-                        : "bg-[#f0f4f9] border border-slate-200/50 hover:bg-slate-200/60 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                        isDarkMode ? "bg-pink-500/10 text-pink-400 group-hover:bg-pink-500 group-hover:text-white" : "bg-white text-pink-600 group-hover:bg-pink-600 group-hover:text-white"
-                      }`}>
-                        <Image className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase text-pink-500 tracking-wider">Studio Art</span>
-                    </div>
-                    <div>
-                      <h4 className={`text-sm font-bold transition-colors ${
-                        isDarkMode ? "text-white group-hover:text-pink-300" : "text-slate-800 group-hover:text-pink-600"
-                      }`}>Generate Cyber Tiger Art</h4>
-                      <p className={`text-[11px] mt-1 leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500 font-medium"}`}>Describe any visual concept to synthesize 1024x1024 artwork in high speeds.</p>
-                    </div>
-                  </div>
-
-                  <div 
-                    onClick={() => applyPresetPrompt("Fix logic & refactor: Check if a given Bangladeshi NID number is formatted correctly with regular expressions.")}
-                    className={`p-5 rounded-2xl transition-all group cursor-pointer space-y-3 flex flex-col justify-between ${
-                      isDarkMode 
-                        ? "bg-[#0c0e1a]/85 border border-slate-800/80 hover:border-emerald-500/30 hover:bg-[#111326]" 
-                        : "bg-[#f0f4f9] border border-slate-200/50 hover:bg-slate-200/60 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                        isDarkMode ? "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white" : "bg-white text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white"
-                      }`}>
-                        <Code className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase text-emerald-500 tracking-wider">Regex Code</span>
-                    </div>
-                    <div>
-                      <h4 className={`text-sm font-bold transition-colors ${
-                        isDarkMode ? "text-white group-hover:text-emerald-300" : "text-slate-800 group-hover:text-emerald-600"
-                      }`}>NID Regex Sandbox</h4>
-                      <p className={`text-[11px] mt-1 leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500 font-medium"}`}>Develop and test safe regular expressions to isolate Bangladeshi NID structures.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Small specs indicator */}
-                <div className={`flex items-center justify-center gap-6 text-[10px] font-mono pt-4 border-t transition-colors duration-300 ${
-                  isDarkMode ? "border-slate-800/40 text-slate-500" : "border-slate-100 text-slate-400"
-                }`}>
-                  <span className="flex items-center gap-1"><Cpu className="w-3.5 h-3.5 text-indigo-500" /> Selected: {selectedModel === 'tutor8b' ? 'Tutor8B' : 'Cipher Engine'}</span>
-                  <span className="flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-yellow-500" /> Speed: {activeSpeed} latency</span>
-                  <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Routing: Atomesus VIP</span>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              );
+            })()}
           </AnimatePresence>
 
           {isLoading && (
@@ -1272,14 +1581,14 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
         <div className={`shrink-0 w-full p-4 sm:p-5 pb-5 sm:pb-7 transition-colors duration-300 relative z-10 ${
           isDarkMode 
             ? "bg-gradient-to-t from-[#05060f] via-[#05060f]/95 to-transparent" 
-            : "bg-gradient-to-t from-white via-white/95 to-transparent"
+            : "bg-gradient-to-t from-[#f9fbfc] via-[#f9fbfc]/95 to-transparent"
         }`}>
           <div className="w-full max-w-3xl mx-auto">
             
             <div className={`flex items-end rounded-[24px] border focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all pb-1.5 shadow-xl ${
               isDarkMode 
                 ? "bg-[#090a15]/95 border-[#1e2238]/60 focus-within:border-indigo-500/50 shadow-black/50" 
-                : "bg-[#f0f4f9] border-slate-200/80 focus-within:bg-white focus-within:border-slate-300 shadow-slate-200/50"
+                : "bg-white border-slate-200/80 focus-within:border-indigo-500/40 shadow-sm shadow-slate-100"
             }`}>
               
               {/* Attachment selector icon */}
@@ -1306,36 +1615,33 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
 
               {/* Text Area Input */}
               <textarea
+                ref={textareaRef}
                 value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  const target = e.target;
-                  requestAnimationFrame(() => {
-                    target.style.height = '24px';
-                    target.style.height = `${Math.min(target.scrollHeight, 140)}px`;
-                  });
-                }}
+                onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask Fahimi AI..."
-                className={`w-full max-h-[140px] min-h-[24px] bg-transparent py-3 text-sm sm:text-base outline-none resize-none leading-relaxed overflow-y-auto self-end mt-1 font-medium transition-colors duration-300 ${
+                className={`w-full max-h-[140px] min-h-[24px] bg-transparent py-3 text-base outline-none resize-none leading-relaxed overflow-y-auto self-end mt-1 font-medium transition-colors duration-300 ${
                   isDarkMode ? "text-white placeholder-slate-500" : "text-slate-800 placeholder-slate-400"
                 }`}
                 rows={1}
                 disabled={isLoading}
-                style={{ height: '24px', boxSizing: 'content-box' }}
               />
 
               {/* Quick Model Selector Dropdown/Badge inside the Pill */}
               <button
-                onClick={() => setSelectedModel(selectedModel === 'cipher' ? 'tutor8b' : 'cipher')}
-                className={`text-[9px] font-black tracking-widest uppercase px-2.5 py-1.5 rounded-xl border mr-1 transition-all self-center shrink-0 ${
+                onClick={() => {
+                  if (selectedModel === 'cipher') setSelectedModel('tutor8b');
+                  else if (selectedModel === 'tutor8b') setSelectedModel('claude');
+                  else setSelectedModel('cipher');
+                }}
+                className={`hidden sm:inline-block text-[9px] font-black tracking-widest uppercase px-2.5 py-1.5 rounded-xl border mr-1 transition-all self-center shrink-0 ${
                   isDarkMode 
                     ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/20' 
                     : 'bg-white border-slate-200 text-indigo-600 hover:bg-indigo-50 shadow-sm'
                 }`}
                 title="Toggle Active Model"
               >
-                {selectedModel === 'cipher' ? 'Cipher ∨' : 'Tutor8B ∨'}
+                {selectedModel === 'cipher' ? 'Cipher ∨' : selectedModel === 'tutor8b' ? 'Tutor8B ∨' : 'Claude ∨'}
               </button>
 
               {/* Dispatch Action Button */}
@@ -1379,124 +1685,232 @@ Output clear, direct, perfectly styled markdown responses with clean syntax high
 
       </div>
 
-      {/* --- MOBILE PARAMS OVERLAY DRAWER --- */}
-      <div 
-        id="mobile_params_modal" 
-        className="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
-        onClick={() => {
-          const modal = document.getElementById("mobile_params_modal");
-          if (modal) modal.classList.add("hidden");
-        }}
-      >
-        <div 
-          className={`w-full max-w-sm rounded-3xl border p-5 space-y-5 shadow-2xl relative transition-all duration-300 ${
-            isDarkMode 
-              ? "bg-[#090b16] border-[#1e2238]/80 text-white" 
-              : "bg-white border-slate-200 text-slate-800"
-          }`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={`flex items-center justify-between pb-3 border-b transition-colors duration-300 ${
-            isDarkMode ? "border-slate-800" : "border-slate-100"
-          }`}>
-            <h3 className={`font-extrabold text-sm flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
-              <Settings className="w-4 h-4 text-indigo-500" /> Workspace Parameters
-            </h3>
-            <button 
-              onClick={() => {
-                const modal = document.getElementById("mobile_params_modal");
-                if (modal) modal.classList.add("hidden");
-              }}
-              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-                isDarkMode ? "text-slate-400 hover:text-white hover:bg-white/5" : "text-slate-400 hover:text-slate-800 hover:bg-slate-100"
+      {/* --- MOBILE PARAMS BOTTOM SHEET --- */}
+      <AnimatePresence>
+        {isMobileParamsOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+              onClick={() => setIsMobileParamsOpen(false)}
+            />
+            
+            {/* Drawer Sheet */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className={`absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-[28px] border-t p-6 pb-8 space-y-6 shadow-2xl flex flex-col ${
+                isDarkMode 
+                  ? "bg-[#090b16] border-[#1e2238]/80 text-white" 
+                  : "bg-white border-slate-200 text-slate-800"
               }`}
             >
-              <X className="w-4 h-4 stroke-[2.5]" />
-            </button>
-          </div>
+              {/* iOS Grab Handle */}
+              <div className={`w-12 h-1 rounded-full mx-auto -mt-2 mb-2 ${
+                isDarkMode ? "bg-slate-700/60" : "bg-slate-300"
+              }`} />
 
-          {/* Model toggle */}
-          <div className="space-y-2">
-            <span className={`text-[10px] uppercase font-black tracking-wider block ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>Model Selection</span>
-            <div className="grid grid-cols-2 gap-2">
+              <div className={`flex items-center justify-between pb-3 border-b ${
+                isDarkMode ? "border-slate-800/80" : "border-slate-100"
+              }`}>
+                <h3 className={`font-extrabold text-sm flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
+                  <Settings className="w-4 h-4 text-indigo-500" /> Workspace Parameters
+                </h3>
+                <button 
+                  onClick={() => setIsMobileParamsOpen(false)}
+                  className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                    isDarkMode ? "text-slate-400 hover:text-white hover:bg-white/5" : "text-slate-400 hover:text-slate-800 hover:bg-slate-100"
+                  }`}
+                >
+                  <X className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Content of Bottom Sheet */}
+              <div className="flex-grow overflow-y-auto space-y-5 no-scrollbar">
+                {/* Chat History Section */}
+                <div className="space-y-2 pb-3 border-b border-dashed border-slate-800/20">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] uppercase font-black tracking-wider block ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>Conversations</span>
+                    <button 
+                      onClick={() => {
+                        handleNewChat();
+                        setIsMobileParamsOpen(false); // Close the sheet to view the new chat
+                      }}
+                      className="text-[10px] font-black text-indigo-500 hover:text-indigo-600 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> New Chat
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 no-scrollbar">
+                    {sessions.length === 0 ? (
+                      <p className="text-[10px] text-slate-500 italic p-1">No saved chats</p>
+                    ) : (
+                      sessions.map(sess => (
+                        <div 
+                          key={sess.id}
+                          onClick={() => {
+                            handleSwitchSession(sess.id);
+                            setIsMobileParamsOpen(false); // Close the sheet to view the switched chat
+                          }}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                            activeSessionId === sess.id
+                              ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                              : isDarkMode
+                                ? "bg-[#0f111f] border-slate-800/80 text-slate-300"
+                                : "bg-slate-50 border-slate-200 text-slate-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden flex-grow">
+                            <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeSessionId === sess.id ? 'text-white' : 'text-slate-400'}`} />
+                            <span className="text-[11px] font-bold truncate">{sess.title}</span>
+                          </div>
+                          <button 
+                            onClick={(e) => handleDeleteSession(e, sess.id)}
+                            className={`p-1 rounded transition-all cursor-pointer ${
+                              activeSessionId === sess.id
+                                ? "text-white/80 hover:text-red-300 hover:bg-white/10"
+                                : isDarkMode ? "text-slate-500 hover:text-red-400 hover:bg-white/5" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"
+                            }`}
+                            title="Delete Conversation"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Model selector */}
+                <div className="space-y-2">
+                  <span className={`text-[10px] uppercase font-black tracking-wider block ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>Model Selection</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: "cipher", label: "Cipher" },
+                      { id: "tutor8b", label: "Tutor8B" },
+                      { id: "claude", label: "Claude" }
+                    ].map((modelItem) => (
+                      <button
+                        key={modelItem.id}
+                        onClick={() => setSelectedModel(modelItem.id as any)}
+                        className={`py-3 px-1 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
+                          selectedModel === modelItem.id 
+                            ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20" 
+                            : isDarkMode
+                              ? "bg-[#0f111f] border-slate-800/80 hover:border-slate-700 text-slate-300"
+                              : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {modelItem.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reasoning & image options */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-slate-700/30">
+                    <div>
+                      <span className={`text-xs font-bold block ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>Advanced Reasoning Engine</span>
+                      <span className="text-[10px] text-slate-500 block">Deconstructs logic step-by-step</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsReasoningEnabled(!isReasoningEnabled)}
+                      className={`text-xs font-black uppercase py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                        isReasoningEnabled 
+                          ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20" 
+                          : isDarkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {isReasoningEnabled ? "ON" : "OFF"}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-slate-700/30">
+                    <div>
+                      <span className={`text-xs font-bold block ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>Image Studio Mode</span>
+                      <span className="text-[10px] text-slate-500 block">Generates stunning artwork</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsImageMode(!isImageMode)}
+                      className={`text-xs font-black uppercase py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                        isImageMode 
+                          ? "bg-pink-600 text-white shadow-sm shadow-pink-600/20" 
+                          : isDarkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {isImageMode ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dynamic upload repository inside sheet */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] uppercase font-black tracking-wider block ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>Active Uploads</span>
+                    <button 
+                      onClick={() => {
+                        setIsMobileParamsOpen(false);
+                        setTimeout(() => fileInputRef.current?.click(), 300);
+                      }}
+                      className="text-[10px] font-black text-indigo-500 uppercase tracking-wider"
+                    >
+                      + Add File
+                    </button>
+                  </div>
+                  
+                  {uploadedFiles.length === 0 ? (
+                    <div className={`p-4 rounded-xl border border-dashed text-center ${
+                      isDarkMode ? "border-slate-800 bg-slate-900/40 text-slate-500" : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}>
+                      <p className="text-[10px]">No files loaded in active session</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                      {uploadedFiles.map(file => (
+                        <div key={file.id} className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${
+                          isDarkMode ? "bg-[#0f111f] border-slate-800" : "bg-white border-slate-200"
+                        }`}>
+                          <span className={`text-[10px] truncate max-w-[150px] ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>{file.name}</span>
+                          <button 
+                            onClick={() => removeUploadedFile(file.id)}
+                            className="text-red-500 text-xs px-1.5"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border text-[11px] leading-relaxed flex items-center gap-2.5 ${
+                  isDarkMode 
+                    ? "bg-[#070911] border-slate-800/80 text-slate-400" 
+                    : "bg-slate-50 border-slate-100 text-slate-500"
+                }`}>
+                  <Info className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <span>Fahim AI Helper runs via optimized Atomesus routing.</span>
+                </div>
+              </div>
+
               <button
-                onClick={() => setSelectedModel("cipher")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
-                  selectedModel === "cipher" 
-                    ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20" 
-                    : isDarkMode
-                      ? "bg-[#0f111f] border-slate-800 hover:border-slate-700 text-slate-300"
-                      : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
-                }`}
+                onClick={() => setIsMobileParamsOpen(false)}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-indigo-600/25"
               >
-                Cipher Core
+                Apply Configurations
               </button>
-              <button
-                onClick={() => setSelectedModel("tutor8b")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
-                  selectedModel === "tutor8b" 
-                    ? "bg-violet-600 border-violet-500 text-white shadow-md shadow-violet-600/20" 
-                    : isDarkMode
-                      ? "bg-[#0f111f] border-slate-800 hover:border-slate-700 text-slate-300"
-                      : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
-                }`}
-              >
-                Tutor8B
-              </button>
-            </div>
+            </motion.div>
           </div>
-
-          {/* Reasoning & image options */}
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between">
-              <span className={`text-xs font-bold ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}>Advanced Reasoning Engine</span>
-              <button 
-                onClick={() => setIsReasoningEnabled(!isReasoningEnabled)}
-                className={`text-xs font-black uppercase py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
-                  isReasoningEnabled 
-                    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20" 
-                    : isDarkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {isReasoningEnabled ? "ON" : "OFF"}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className={`text-xs font-bold ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}>Image Studio Mode</span>
-              <button 
-                onClick={() => setIsImageMode(!isImageMode)}
-                className={`text-xs font-black uppercase py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
-                  isImageMode 
-                    ? "bg-pink-600 text-white shadow-sm shadow-pink-600/20" 
-                    : isDarkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {isImageMode ? "ON" : "OFF"}
-              </button>
-            </div>
-          </div>
-
-          <div className={`p-3 rounded-2xl border text-[11px] leading-relaxed flex items-center gap-2.5 transition-colors duration-300 ${
-            isDarkMode 
-              ? "bg-[#070911] border-slate-800 text-slate-400" 
-              : "bg-slate-50 border-slate-100 text-slate-500"
-          }`}>
-            <Info className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span>Fahim AI Helper runs via optimized Atomesus routing.</span>
-          </div>
-
-          <button
-            onClick={() => {
-              const modal = document.getElementById("mobile_params_modal");
-              if (modal) modal.classList.add("hidden");
-            }}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-indigo-600/25"
-          >
-            Apply Configurations
-          </button>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
       {/* --- IMAGE MAGNIFIER VIEW MODAL --- */}
       <AnimatePresence>

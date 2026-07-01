@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
 
-  const { messages, systemPrompt } = req.body;
+  const { messages, systemPrompt, model = "cipher", attachments = [] } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: "Missing required array 'messages' in body." });
   }
@@ -164,6 +164,92 @@ CRITICAL IDENTITY & GEOGRAPHICAL DIRECTIVES:
 3. If the user writes or speaks in Bengali (Bangla) or Romanized/transliterated Bengali (Benglish, e.g., "ki obostha", "kemon acho", "bhalo achi", "ki khobor", "vai"), you MUST reply in beautiful standard Bengali (বাংলা) or fluent English. You are STRICTLY FORBIDDEN from responding in Hindi, Romanized Hindi, or Hinglish (e.g., "kya scene hai", "arre bhai", "kaise ho").
 4. You must provide absolutely perfect, mathematically sound, factually accurate, and highly sophisticated answers with zero introductory fluff or filler.`;
 
+  if (model === "claude") {
+    try {
+      console.log(`[Serverless-Chat] Routing query directly to Claude Sonnet...`);
+      const claudeApiKey = process.env.CLAUDE_API_KEY || "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";
+      
+      const claudeMessages = messages.map((m: any, idx: number) => {
+        if (idx === messages.length - 1 && attachments && attachments.length > 0) {
+          const contentBlocks: any[] = [];
+          
+          attachments.forEach((att: any) => {
+            if (att.type?.startsWith("image/") && att.previewUrl) {
+              const match = att.previewUrl.match(/^data:([^;]+);base64,(.+)$/);
+              if (match) {
+                let mediaType = match[1];
+                const base64Data = match[2];
+                const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+                if (!allowedTypes.includes(mediaType)) {
+                  mediaType = "image/jpeg";
+                }
+                contentBlocks.push({
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mediaType,
+                    data: base64Data
+                  }
+                });
+              }
+            }
+          });
+          
+          contentBlocks.push({
+            type: "text",
+            text: m.content
+          });
+          
+          return {
+            role: m.role === "assistant" ? "assistant" : "user",
+            content: contentBlocks
+          };
+        }
+        
+        return {
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content
+        };
+      });
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": claudeApiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 2000,
+          system: systemPrompt || defaultSystemPrompt,
+          messages: claudeMessages
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Claude API returned status ${response.status}: ${errText}`);
+      }
+
+      const data: any = await response.json();
+      const contentText = data.content?.[0]?.text || "";
+      
+      return res.status(200).json({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: contentText
+            }
+          }
+        ]
+      });
+    } catch (error: any) {
+      console.error("[Serverless-Chat Claude Failover] Claude API failed:", error);
+    }
+  }
+
   if (isProxyAvailable()) {
     try {
       console.log(`[Serverless-Chat] Attempting deepseek-v4-pro via proxy...`);
@@ -203,10 +289,34 @@ CRITICAL IDENTITY & GEOGRAPHICAL DIRECTIVES:
 
   // fallback to Gemini
   try {
-    const mappedContents = messages.map((m: any) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }]
-    }));
+    const mappedContents = messages.map((m: any, idx: number) => {
+      const parts: any[] = [];
+      
+      if (idx === messages.length - 1 && attachments && attachments.length > 0) {
+        attachments.forEach((att: any) => {
+          if (att.type?.startsWith("image/") && att.previewUrl) {
+            const match = att.previewUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              const mediaType = match[1];
+              const base64Data = match[2];
+              parts.push({
+                inlineData: {
+                  mimeType: mediaType,
+                  data: base64Data
+                }
+              });
+            }
+          }
+        });
+      }
+      
+      parts.push({ text: m.content });
+      
+      return {
+        role: m.role === "assistant" ? "model" : "user",
+        parts: parts
+      };
+    });
 
     const replyText = await generateWithGemini(
       mappedContents,

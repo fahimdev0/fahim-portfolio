@@ -1,4 +1,4 @@
-import { LucideIcon, Tv, Briefcase, Shield, Cpu, Zap, Eye, Terminal, Sparkles, Sliders, Trophy, Languages, FileText } from "lucide-react";
+import { LucideIcon, Tv, Briefcase, Shield, Cpu, Zap, Eye, Terminal, Sparkles, Sliders, Trophy, Languages, FileText, Globe, BookOpen } from "lucide-react";
 
 export type RegistryToolCategory =
   | "AI"
@@ -36,13 +36,26 @@ export const TOOL_CATEGORIES: RegistryToolCategory[] = [
 
 export const TOOL_REGISTRY: RegisteredTool[] = [
   {
+    id: "one-click-info",
+    name: "One Click Information",
+    route: "one-click-info",
+    category: "Utilities",
+    version: "v1.0",
+    status: "Live",
+    description: "Get comprehensive details about any school, college or university instantly.",
+    icon: BookOpen,
+    actionText: "Search",
+    glowColor: "bg-indigo-600/20",
+    iconBgColor: "bg-indigo-500"
+  },
+  {
     id: "fahim-ai-helper",
     name: "Fahim AI Helper",
     route: "ai-helper",
     category: "AI",
     version: "v1.0",
     status: "Live",
-    description: "DeepSeek Powered AI Assistant. Chat, generate code, and answer any questions in real-time.",
+    description: "Multi-model AI Assistant. Chat, generate code, and answer any questions in real-time.",
     icon: Sparkles,
     actionText: "Chat",
     glowColor: "bg-blue-600/20",

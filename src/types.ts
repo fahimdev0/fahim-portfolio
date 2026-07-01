@@ -18,7 +18,7 @@ export interface Tool {
   actionText?: string;
 }
 
-export type View = "hero" | "tools" | "iptv" | "freelancing" | "fifa" | "ai-helper" | "translator" | "api-tester" | "hacking" | "doc-cloner";
+export type View = "hero" | "tools" | "iptv" | "freelancing" | "fifa" | "ai-helper" | "translator" | "api-tester" | "hacking" | "doc-cloner" | "free-source" | "one-click-info";
 
 export interface IPTVChannel {
   id: string;

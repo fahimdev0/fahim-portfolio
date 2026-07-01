@@ -42,3 +42,22 @@
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* If Android is detected, disable all resource-heavy backdrop blurs for immediate smooth performance */
+.is-android * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Ensure background elements have excellent visual contrast when backdrop filters are disabled on Android */
+.is-android .bg-neutral-900\/50,
+.is-android .bg-black\/40,
+.is-android .bg-black\/60,
+.is-android .bg-black\/70,
+.is-android .bg-[#1c1c1e] {
+  background-color: rgba(12, 12, 15, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.is-android .bg-neutral-950\/95 {
+  background-color: #060608 !important;
+}

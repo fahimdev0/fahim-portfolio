@@ -20,6 +20,8 @@ const TranslatorApp = lazy(() => import("./components/TranslatorApp").then(m => 
 const APITesterApp = lazy(() => import("./components/APITesterApp").then(m => ({ default: m.APITesterApp })));
 const HackingApp = lazy(() => import("./components/HackingApp").then(m => ({ default: m.HackingApp })));
 const DocumentClonerApp = lazy(() => import("./components/DocumentClonerApp").then(m => ({ default: m.DocumentClonerApp })));
+const OneClickInfoApp = lazy(() => import("./components/OneClickInfoApp").then(m => ({ default: m.OneClickInfoApp })));
+const FreeSourceApp = lazy(() => import("./components/FreeSourceApp").then(m => ({ default: m.FreeSourceApp })));
 
 // Firestore and Firebase Authentication integrations
 import {
@@ -50,6 +52,26 @@ const TOOLS: Tool[] = TOOL_REGISTRY as unknown as Tool[];
 const CATEGORIES: ToolCategory[] = ["All", ...TOOL_CATEGORIES] as ToolCategory[];
 
 const BackgroundGlows = () => {
+  const [isAndroid, setIsAndroid] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
+      setIsAndroid(true);
+    }
+  }, []);
+
+  if (isAndroid) {
+    return (
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Static ambient background circles with zero CPU/GPU overhead on Android */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/12 rounded-full blur-[140px]" />
+        <div className="absolute top-[20%] right-[10%] w-[500px] h-[500px] bg-purple-600/08 rounded-full blur-[120px]" />
+        <div className="absolute top-[40%] left-[5%] w-[450px] h-[450px] bg-pink-600/08 rounded-full blur-[110px]" />
+        <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-full h-[400px] bg-orange-600/4 rounded-full blur-[130px]" />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
       {/* Top Black Area is natural body bg */}
@@ -177,7 +199,7 @@ const getToolAppStoreMeta = (id: string) => {
       };
     case "fahim-ai-helper":
       return {
-        subtitle: "DeepSeek Powered AI Assistant Hub",
+        subtitle: "Multi-model AI Assistant Hub",
         genre: "AI & Automation",
         gradient: "bg-gradient-to-tr from-[#020813] via-[#0284c7] to-[#22d3ee] border border-cyan-500/35 shadow-[0_0_15px_rgba(34,211,238,0.3)]"
       };
@@ -376,7 +398,9 @@ const ToolGrid = ({
   handleLaunchTranslator,
   handleLaunchAPITester,
   handleLaunchHacking,
-  handleLaunchDocCloner
+  handleLaunchDocCloner,
+  handleLaunchFreeSource,
+  handleLaunchOneClickInfo
 }: { 
   activeCategory: ToolCategory; 
   handleLaunchIPTV: (playlistUrl?: string, category?: string) => void; 
@@ -387,6 +411,8 @@ const ToolGrid = ({
   handleLaunchAPITester: () => void;
   handleLaunchHacking: () => void;
   handleLaunchDocCloner: () => void;
+  handleLaunchFreeSource: () => void;
+  handleLaunchOneClickInfo: () => void;
 }) => {
   const [pinnedTools, setPinnedTools] = useState<string[]>(() => {
     try {
@@ -519,6 +545,10 @@ const ToolGrid = ({
                             handleLaunchAPITester();
                           } else if (tool.id === "ethical-hacking") {
                             handleLaunchHacking();
+                          } else if (tool.id === "free-source") {
+                            handleLaunchFreeSource();
+                          } else if (tool.id === "one-click-info") {
+                            handleLaunchOneClickInfo();
                           }
                         }}
                         className="bg-[#2c2c2e] hover:bg-[#3a3a3c] text-[#0a84ff] hover:text-[#3396ff] font-extrabold text-[12px] sm:text-[13px] h-7 sm:h-[29px] px-5 rounded-full select-none transition-all active:scale-95 duration-150 flex items-center justify-center border-0 tracking-tight cursor-pointer"
@@ -573,6 +603,13 @@ const Filters = ({ active, onChange }: { active: ToolCategory; onChange: (c: Too
 export default function App() {
   const [view, setView] = useState<View>("hero");
   const [category, setCategory] = useState<ToolCategory>("All");
+  
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
+      document.documentElement.classList.add("is-android");
+    }
+  }, []);
+
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionProps, setTransitionProps] = useState<{
     title?: string;
@@ -670,7 +707,7 @@ export default function App() {
   const handleLaunchAIHelper = () => {
     setTransitionProps({
       title: "Fahim AI Helper",
-      subtitle: "Initializing DeepSeek Intelligence Core...",
+      subtitle: "Initializing Multi-model AI Engine...",
       icon: Sparkles,
       glowColor: "bg-blue-600/20",
       iconBgColor: "bg-blue-500"
@@ -710,6 +747,36 @@ export default function App() {
       setView("doc-cloner");
       setIsTransitioning(false);
     }, 2000);
+  };
+
+  const handleLaunchFreeSource = () => {
+    setTransitionProps({
+      title: "Free Source Hub",
+      subtitle: "Connecting to open source repository ecosystem...",
+      icon: Globe,
+      glowColor: "bg-emerald-600/20",
+      iconBgColor: "bg-emerald-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("free-source");
+      setIsTransitioning(false);
+    }, 1800);
+  };
+
+  const handleLaunchOneClickInfo = () => {
+    setTransitionProps({
+      title: "One Click Information",
+      subtitle: "Initializing education database engine...",
+      icon: BookOpen,
+      glowColor: "bg-indigo-600/20",
+      iconBgColor: "bg-indigo-500"
+    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView("one-click-info");
+      setIsTransitioning(false);
+    }, 1800);
   };
 
   const handleCopyEmail = () => {
@@ -1060,7 +1127,7 @@ export default function App() {
     setApiToken(token);
   };
 
-  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator" || view === "freelancing" || view === "api-tester" || view === "hacking" || view === "doc-cloner";
+  const isStablePage = view === "hero" || view === "tools" || view === "fifa" || view === "iptv" || view === "ai-helper" || view === "translator" || view === "freelancing" || view === "api-tester" || view === "hacking" || view === "doc-cloner" || view === "free-source" || view === "one-click-info";
 
   return (
     <div className={`flex flex-col font-sans selection:bg-blue-500/30 w-full relative ${
@@ -1068,7 +1135,7 @@ export default function App() {
     }`}>
       <BackgroundGlows />
       {view === "hero" && <SpiderWeb />}
-      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && view !== "ai-helper" && view !== "translator" && view !== "api-tester" && view !== "hacking" && view !== "doc-cloner" && (
+      {view !== "freelancing" && view !== "iptv" && view !== "fifa" && view !== "ai-helper" && view !== "translator" && view !== "api-tester" && view !== "hacking" && view !== "doc-cloner" && view !== "free-source" && view !== "one-click-info" && (
         <Header currentView={view} setView={setView} onContactClick={() => setIsContactOpen(true)} onCommunityClick={() => setIsCommunityOpen(true)} />
       )}
 
@@ -1212,6 +1279,8 @@ export default function App() {
                 handleLaunchAPITester={handleLaunchAPITester}
                 handleLaunchHacking={handleLaunchHacking}
                 handleLaunchDocCloner={handleLaunchDocCloner}
+                handleLaunchFreeSource={handleLaunchFreeSource}
+                handleLaunchOneClickInfo={handleLaunchOneClickInfo}
               />
             </div>
           </motion.main>
@@ -1300,7 +1369,7 @@ export default function App() {
               <Suspense fallback={
                 <LoadingScreen 
                   title="Fahim AI Helper" 
-                  subtitle="Initializing DeepSeek Intelligence Core..." 
+                  subtitle="Initializing Multi-model AI Engine..." 
                   icon={Sparkles} 
                   glowColor="bg-blue-600/20" 
                   iconBgColor="bg-blue-500" 
@@ -1405,6 +1474,52 @@ export default function App() {
                 <DocumentClonerApp 
                   onBack={() => setView("tools")} 
                 />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "free-source" ? (
+          <motion.div 
+            key="free-source-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="Free Source Hub" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="Free Source Hub" 
+                  subtitle="Connecting to open source repository ecosystem..." 
+                  icon={Globe} 
+                  glowColor="bg-emerald-600/20" 
+                  iconBgColor="bg-emerald-500" 
+                />
+              }>
+                <FreeSourceApp 
+                  onBack={() => setView("tools")} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        ) : view === "one-click-info" ? (
+          <motion.div 
+            key="one-click-info-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full overflow-hidden flex flex-col"
+          >
+            <ErrorBoundary toolName="One Click Information" onReset={() => setView("tools")}>
+              <Suspense fallback={
+                <LoadingScreen 
+                  title="One Click Information" 
+                  subtitle="Initializing education database engine..." 
+                  icon={BookOpen} 
+                  glowColor="bg-indigo-600/20" 
+                  iconBgColor="bg-indigo-500" 
+                />
+              }>
+                <OneClickInfoApp onBack={() => setView("tools")} />
               </Suspense>
             </ErrorBoundary>
           </motion.div>
