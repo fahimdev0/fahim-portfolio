@@ -38,7 +38,7 @@ async function generateWithGemini(
   isJson: boolean = false,
   temperature: number = 0.3
 ) {
-  const candidateModels = ["gemini-2.5-flash", "gemini-3.1-flash-lite"];
+  const candidateModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-1.5-pro"];
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY environment variable is not defined");

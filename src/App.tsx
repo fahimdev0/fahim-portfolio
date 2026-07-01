@@ -638,7 +638,7 @@ export default function App() {
     setTimeout(() => {
       setView("api-tester");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleLaunchTranslator = () => {
@@ -653,7 +653,7 @@ export default function App() {
     setTimeout(() => {
       setView("translator");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleLaunchIPTV = (playlistUrl?: string, category?: string, backView: View = "tools") => {
@@ -671,7 +671,7 @@ export default function App() {
     setTimeout(() => {
       setView("iptv");
       setIsTransitioning(false);
-    }, 2500);
+    }, 450);
   };
 
   const handleLaunchFreelancing = () => {
@@ -686,7 +686,7 @@ export default function App() {
     setTimeout(() => {
       setView("freelancing");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleLaunchFifa = () => {
@@ -701,7 +701,7 @@ export default function App() {
     setTimeout(() => {
       setView("fifa");
       setIsTransitioning(false);
-    }, 2000);
+    }, 450);
   };
 
   const handleLaunchAIHelper = () => {
@@ -716,7 +716,7 @@ export default function App() {
     setTimeout(() => {
       setView("ai-helper");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleLaunchHacking = () => {
@@ -731,7 +731,7 @@ export default function App() {
     setTimeout(() => {
       setView("hacking");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleLaunchDocCloner = () => {
@@ -746,7 +746,7 @@ export default function App() {
     setTimeout(() => {
       setView("doc-cloner");
       setIsTransitioning(false);
-    }, 2000);
+    }, 450);
   };
 
   const handleLaunchFreeSource = () => {
@@ -761,7 +761,7 @@ export default function App() {
     setTimeout(() => {
       setView("free-source");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleLaunchOneClickInfo = () => {
@@ -776,7 +776,7 @@ export default function App() {
     setTimeout(() => {
       setView("one-click-info");
       setIsTransitioning(false);
-    }, 1800);
+    }, 450);
   };
 
   const handleCopyEmail = () => {

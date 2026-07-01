@@ -718,11 +718,13 @@ export function SpiderWeb() {
         ctx.rotate((time * 0.035) % (Math.PI * 2));
       }
 
-      // Draw 3D Drop Shadow offset slightly down-right to elevate spider over the web
-      ctx.save();
-      ctx.translate(size * 0.32, size * 0.45); // high shift
-      renderSingleSpider(true, isDead);
-      ctx.restore();
+      // Draw 3D Drop Shadow offset slightly down-right to elevate spider over the web on desktop only
+      if (W >= 768) {
+        ctx.save();
+        ctx.translate(size * 0.32, size * 0.45); // high shift
+        renderSingleSpider(true, isDead);
+        ctx.restore();
+      }
 
       // Draw actual primary colorful textured spider
       renderSingleSpider(false, isDead);
@@ -793,57 +795,59 @@ export function SpiderWeb() {
 
         if (alpha <= 0.05) return;
 
-        // Realistic gravity tension sag and natural wind/vibration sway
-        const timeFactor = timeRef.current * 0.015; // slow organic wave flow
-        const len = Math.hypot(b.x - a.x, b.y - a.y);
-        
-        // Longer threads sag more under gravity
-        const sagAmount = len * 0.065 + 1.2; 
-        
-        // Gentle wind vibration/organic sway
-        const windX = Math.sin(timeFactor + (a.x + b.x) * 0.003) * 2.2;
-        const windY = (Math.cos(timeFactor * 0.85 + (a.y + b.y) * 0.003) + 0.35) * 2.8;
-
-        const controlX = midX + windX;
-        const controlY = midY + sagAmount + windY;
-
         // Rendering double-line glow strokes to resemble macro-photography of thin glowing silk
         if (isMobile) {
-          // Single lightweight path for maximum 60fps/120fps performance on mobile
+          // Straight line with zero math overhead on mobile for locked 60/120 FPS
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
-          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
-          ctx.strokeStyle = isDiagonal ? `rgba(110, 115, 244, ${alpha * 0.7})` : `rgba(135, 145, 248, ${alpha * 0.7})`;
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = isDiagonal ? `rgba(110, 115, 244, ${alpha * 0.65})` : `rgba(135, 145, 248, ${alpha * 0.65})`;
           ctx.lineWidth = width;
           ctx.stroke();
-        } else if (glow > 0.15) {
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
-          ctx.shadowBlur = isDiagonal ? (4 + glow * 8) : (8 + glow * 12);
-          ctx.shadowColor = `rgba(129, 140, 248, ${glow * (isDiagonal ? 0.6 : 0.85) * (alpha / (0.35 + glow * 0.5))})`;
-          ctx.strokeStyle = isDiagonal ? `rgba(99, 102, 241, ${alpha})` : `rgba(129, 140, 248, ${alpha})`;
-          ctx.lineWidth = width;
-          ctx.stroke();
-          ctx.shadowBlur = 0;
         } else {
-          // Inner glowing backing line
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
-          ctx.strokeStyle = isDiagonal 
-            ? `rgba(99, 102, 241, ${alpha * 0.2})` 
-            : `rgba(129, 140, 248, ${alpha * 0.24})`;
-          ctx.lineWidth = width * (isDiagonal ? 2.8 : 3.2);
-          ctx.stroke();
+          // Realistic gravity tension sag and natural wind/vibration sway
+          const timeFactor = timeRef.current * 0.015; // slow organic wave flow
+          const len = Math.hypot(b.x - a.x, b.y - a.y);
+          
+          // Longer threads sag more under gravity
+          const sagAmount = len * 0.065 + 1.2; 
+          
+          // Gentle wind vibration/organic sway
+          const windX = Math.sin(timeFactor + (a.x + b.x) * 0.003) * 2.2;
+          const windY = (Math.cos(timeFactor * 0.85 + (a.y + b.y) * 0.003) + 0.35) * 2.8;
 
-          // Central sharp glowing silk strand
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
-          ctx.strokeStyle = isDiagonal ? `rgba(110, 115, 244, ${alpha})` : `rgba(135, 145, 248, ${alpha})`;
-          ctx.lineWidth = width;
-          ctx.stroke();
+          const controlX = midX + windX;
+          const controlY = midY + sagAmount + windY;
+
+          if (glow > 0.15) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
+            ctx.shadowBlur = isDiagonal ? (4 + glow * 8) : (8 + glow * 12);
+            ctx.shadowColor = `rgba(129, 140, 248, ${glow * (isDiagonal ? 0.6 : 0.85) * (alpha / (0.35 + glow * 0.5))})`;
+            ctx.strokeStyle = isDiagonal ? `rgba(99, 102, 241, ${alpha})` : `rgba(129, 140, 248, ${alpha})`;
+            ctx.lineWidth = width;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          } else {
+            // Inner glowing backing line
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
+            ctx.strokeStyle = isDiagonal 
+              ? `rgba(99, 102, 241, ${alpha * 0.2})` 
+              : `rgba(129, 140, 248, ${alpha * 0.24})`;
+            ctx.lineWidth = width * (isDiagonal ? 2.8 : 3.2);
+            ctx.stroke();
+
+            // Central sharp glowing silk strand
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.quadraticCurveTo(controlX, controlY, b.x, b.y);
+            ctx.strokeStyle = isDiagonal ? `rgba(110, 115, 244, ${alpha})` : `rgba(135, 145, 248, ${alpha})`;
+            ctx.lineWidth = width;
+            ctx.stroke();
+          }
         }
       });
     }

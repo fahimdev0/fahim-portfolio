@@ -5,12 +5,13 @@ import {
   FileText, Settings, ToggleLeft, ToggleRight, Image, HelpCircle, HardDrive, 
   Cpu, Zap, Eye, Sliders, Trash2, ShieldCheck, BookOpen, Terminal, Code, Info, 
   Download, Maximize2, X, AlertCircle, FileSpreadsheet, RefreshCw, Sun, Moon, Menu,
-  MessageSquare
+  MessageSquare, Printer
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus, prism } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { PassportPhotoStudio } from "./PassportPhotoStudio";
 
 // --- COPY BUTTON UTILITY ---
 const CopyButton = ({ text, isDarkMode = true }: { text: string; isDarkMode?: boolean }) => {
@@ -56,6 +57,8 @@ interface ChatMessage {
   thinkingProcess?: string[];
   attachedFiles?: FileAttachment[];
   imageUrl?: string;
+  isPassportRequest?: boolean;
+  originalImageUrl?: string;
 }
 
 interface ChatSession {
@@ -64,6 +67,287 @@ interface ChatSession {
   messages: ChatMessage[];
   createdAt: number;
 }
+
+const getModelDisplayName = (modelId: string) => {
+  const mapping: Record<string, string> = {
+    "cipher": "Cipher Core",
+    "tutor8b": "Tutor8B Academic",
+    "claude": "Claude Sonnet",
+    "gemini31pro": "Gemini 3.1 Pro",
+    "claudeopus48": "Claude Opus 4.8",
+    "claudeopus47": "Claude Opus 4.7",
+    "glm51": "GLM 5.1",
+    "gpt55": "GPT 5.5",
+    "kimik26": "Kimi K2.6",
+    "glm52": "Glm 5.2",
+    "gpt54": "Gpt 5.4"
+  };
+  return mapping[modelId] || modelId;
+};
+
+const downloadAsMarkdown = (content: string, id: string) => {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `AI_Doc_${id}.md`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const downloadAsHTMLDocument = (content: string, title: string) => {
+  let htmlContent = content
+    .replace(/^# (.*$)/gim, '<h1 style="color: #312e81; font-family: \'Space Grotesk\', sans-serif; font-size: 28px; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">$1</h1>')
+    .replace(/^## (.*$)/gim, '<h2 style="color: #1e3a8a; font-family: \'Space Grotesk\', sans-serif; font-size: 22px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">$1</h2>')
+    .replace(/^### (.*$)/gim, '<h3 style="color: #1e293b; font-family: sans-serif; font-size: 18px; margin-top: 20px; margin-bottom: 10px;">$1</h3>')
+    .replace(/^\> (.*$)/gim, '<blockquote style="border-left: 4px solid #6366f1; padding-left: 15px; font-style: italic; color: #475569; margin: 20px 0; background: #f8fafc; padding: 10px 15px; border-radius: 0 8px 8px 0;">$1</blockquote>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code style="background-color: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #be185d;">$1</code>')
+    .split('\n')
+    .map(line => {
+      if (line.startsWith('<h') || line.startsWith('<blockquote') || line.startsWith('<ul') || line.startsWith('<ol') || line.startsWith('<li') || line.startsWith('<table') || line.trim() === '') {
+        return line;
+      }
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        return `<li style="margin-bottom: 8px; font-family: sans-serif; font-size: 15px; color: #334155;">${line.substring(2)}</li>`;
+      }
+      return `<p style="line-height: 1.6; margin-bottom: 15px; font-family: sans-serif; font-size: 15px; color: #334155;">${line}</p>`;
+    })
+    .join('\n');
+
+  htmlContent = htmlContent.replace(/(<li.*?>.*?<\/li>)/gs, '<ul style="padding-left: 20px; margin-bottom: 20px;">$1</ul>');
+  htmlContent = htmlContent.replace(/<\/ul>\s*<ul.*?>/g, '');
+
+  const documentHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #1e293b;
+      font-family: 'Inter', sans-serif;
+      padding: 40px 20px;
+    }
+    .document-card {
+      background: white;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 50px 60px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 12px;
+      color: #94a3b8;
+      font-family: 'Inter', sans-serif;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 25px 0;
+      font-size: 14px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      padding: 12px 15px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    tr:hover {
+      background-color: #f8fafc;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 20px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="document-card">
+    ${htmlContent}
+  </div>
+  <div class="footer">
+    Generated by Fahim AI Helper • World-Class Intelligence Workspace
+  </div>
+</body>
+</html>
+  `;
+
+  const blob = new Blob([documentHTML], { type: "text/html;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `${title.toLowerCase().replace(/[^a-z0-9]/g, "_") || "document"}.html`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportTablesToCSV = (content: string, title: string) => {
+  const lines = content.split("\n");
+  const tableLines = lines.filter(line => line.trim().startsWith("|") && line.trim().endsWith("|"));
+  
+  if (tableLines.length === 0) return;
+
+  const csvContent = tableLines
+    .filter(line => !line.includes("---"))
+    .map(line => {
+      return line
+        .split("|")
+        .slice(1, -1)
+        .map(cell => `"${cell.trim().replace(/"/g, '""')}"`)
+        .join(",");
+    })
+    .join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `${title.toLowerCase().replace(/[^a-z0-9]/g, "_") || "table"}_data.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const downloadAsWordDocument = (content: string, title: string, template: string = "modern") => {
+  let fontStyle = "font-family: 'Calibri', 'Arial', sans-serif;";
+  let titleColor = "#1e1b4b";
+  let subtitleColor = "#312e81";
+  let contentColor = "#1e293b";
+  let borderStyle = "border-bottom: 2px solid #e2e8f0;";
+
+  if (template === "academic") {
+    fontStyle = "font-family: 'Times New Roman', Times, serif;";
+    titleColor = "#000000";
+    subtitleColor = "#000000";
+    contentColor = "#000000";
+    borderStyle = "border-bottom: 1.5px solid #000000;";
+  } else if (template === "executive") {
+    fontStyle = "font-family: Georgia, serif;";
+    titleColor = "#0f172a";
+    subtitleColor = "#1e3a8a";
+    contentColor = "#1e293b";
+    borderStyle = "border-bottom: 2px solid #cbd5e1;";
+  } else if (template === "tech") {
+    fontStyle = "font-family: 'Courier New', Courier, monospace;";
+    titleColor = "#0f172a";
+    subtitleColor = "#0f766e";
+    contentColor = "#1e293b";
+    borderStyle = "border-bottom: 1px dashed #94a3b8;";
+  }
+
+  let bodyHTML = content
+    .replace(/^# (.*$)/gim, `<h1 style="color: ${titleColor}; ${fontStyle} font-size: 24pt; font-weight: bold; margin-top: 18pt; margin-bottom: 6pt; ${borderStyle} padding-bottom: 4pt;">$1</h1>`)
+    .replace(/^## (.*$)/gim, `<h2 style="color: ${subtitleColor}; ${fontStyle} font-size: 18pt; font-weight: bold; margin-top: 14pt; margin-bottom: 4pt;">$1</h2>`)
+    .replace(/^### (.*$)/gim, `<h3 style="color: ${contentColor}; ${fontStyle} font-size: 14pt; font-weight: bold; margin-top: 12pt; margin-bottom: 4pt;">$1</h3>`)
+    .replace(/^\> (.*$)/gim, '<blockquote style="border-left: 3.5pt solid #6366f1; padding-left: 10pt; font-style: italic; color: #4b5563; margin: 12pt 0; background-color: #f9fafb; padding: 6pt 10pt;">$1</blockquote>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code style="background-color: #f3f4f6; padding: 2px 4px; border-radius: 4px; font-family: \'Consolas\', monospace; font-size: 10pt; color: #dc2626;">$1</code>')
+    .split('\n')
+    .map(line => {
+      if (line.startsWith('<h') || line.startsWith('<blockquote') || line.startsWith('<ul') || line.startsWith('<ol') || line.startsWith('<li') || line.startsWith('<table') || line.trim() === '') {
+        return line;
+      }
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        return `<li style="margin-bottom: 6pt; ${fontStyle} font-size: 11pt; color: ${contentColor};">${line.substring(2)}</li>`;
+      }
+      return `<p style="line-height: 1.25; margin-bottom: 10pt; ${fontStyle} font-size: 11pt; color: ${contentColor};">${line}</p>`;
+    })
+    .join('\n');
+
+  bodyHTML = bodyHTML.replace(/(<li.*?>.*?<\/li>)/gs, '<ul style="padding-left: 18pt; margin-bottom: 12pt;">$1</ul>');
+  bodyHTML = bodyHTML.replace(/<\/ul>\s*<ul.*?>/g, '');
+
+  const mswordTemplate = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <title>${title}</title>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Print</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        body {
+          ${fontStyle}
+          font-size: 11pt;
+          line-height: 1.25;
+          color: ${contentColor};
+          margin: 1in;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 12pt 0;
+        }
+        th {
+          background-color: #f3f4f6;
+          border: 1px solid #d1d5db;
+          padding: 8px;
+          font-weight: bold;
+          text-align: left;
+        }
+        td {
+          border: 1px solid #d1d5db;
+          padding: 8px;
+        }
+        pre {
+          background-color: #1f2937;
+          color: #f9fafb;
+          padding: 12pt;
+          font-family: 'Consolas', monospace;
+          font-size: 10pt;
+          margin: 12pt 0;
+          border-radius: 6px;
+        }
+      </style>
+    </head>
+    <body>
+      <div style="margin: 0.5in;">
+        ${bodyHTML}
+      </div>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff' + mswordTemplate], { type: "application/msword;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `${title.toLowerCase().replace(/[^a-z0-9]/g, "_") || "document"}.doc`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
   // --- STATE SYSTEM ---
@@ -75,7 +359,7 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
   const [isDarkMode, setIsDarkMode] = useState(false); // Clean Gemini Light Mode by default
   
   // Prime Parameters
-  const [selectedModel, setSelectedModel] = useState<"cipher" | "tutor8b" | "claude">("cipher");
+  const [selectedModel, setSelectedModel] = useState<string>("cipher");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(true);
   const [isImageMode, setIsImageMode] = useState(false);
   const [longerMemory, setLongerMemory] = useState(true);
@@ -91,6 +375,13 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
   
   // Image magnification view
   const [magnifiedImage, setMagnifiedImage] = useState<string | null>(null);
+
+  // Print & PDF Document Preview Hub State
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printContent, setPrintContent] = useState("");
+  const [printTitle, setPrintTitle] = useState("");
+  const [printTemplate, setPrintTemplate] = useState("modern"); // modern, academic, executive, tech
+  const [printFontSize, setPrintFontSize] = useState("medium"); // small, medium, large
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +413,156 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
   const updateSpeedStat = () => {
     const latencies = ["0.18s", "0.22s", "0.28s", "0.34s", "0.41s", "0.15s"];
     setActiveSpeed(latencies[Math.floor(Math.random() * latencies.length)]);
+  };
+
+  const handleTriggerPrint = () => {
+    let fontStyle = "font-family: 'Inter', sans-serif;";
+    let titleColor = "#1e1b4b";
+    let subtitleColor = "#312e81";
+    let contentColor = "#1e293b";
+    let borderStyle = "border-bottom: 2px solid #e2e8f0;";
+
+    if (printTemplate === "academic") {
+      fontStyle = "font-family: 'Times New Roman', Times, serif;";
+      titleColor = "#000000";
+      subtitleColor = "#000000";
+      contentColor = "#000000";
+      borderStyle = "border-bottom: 1.5px solid #000000;";
+    } else if (printTemplate === "executive") {
+      fontStyle = "font-family: Georgia, serif;";
+      titleColor = "#0f172a";
+      subtitleColor = "#1e3a8a";
+      contentColor = "#1e293b";
+      borderStyle = "border-bottom: 2px solid #cbd5e1;";
+    } else if (printTemplate === "tech") {
+      fontStyle = "font-family: monospace, Courier, monospace;";
+      titleColor = "#0f172a";
+      subtitleColor = "#0f766e";
+      contentColor = "#1e293b";
+      borderStyle = "border-bottom: 1px dashed #94a3b8;";
+    }
+
+    const fontSizing = printFontSize === "small" ? "13px" : printFontSize === "large" ? "18px" : "15px";
+
+    // Format Markdown into beautiful HTML for printing
+    let htmlBody = printContent
+      .replace(/^# (.*$)/gim, `<h1 style="color: ${titleColor}; ${fontStyle} font-size: 26px; font-weight: bold; margin-top: 25px; margin-bottom: 12px; ${borderStyle} padding-bottom: 6px;">$1</h1>`)
+      .replace(/^## (.*$)/gim, `<h2 style="color: ${subtitleColor}; ${fontStyle} font-size: 20px; font-weight: bold; margin-top: 20px; margin-bottom: 10px;">$1</h2>`)
+      .replace(/^### (.*$)/gim, `<h3 style="color: ${contentColor}; ${fontStyle} font-size: 16px; font-weight: bold; margin-top: 15px; margin-bottom: 8px;">$1</h3>`)
+      .replace(/^\> (.*$)/gim, `<blockquote style="border-left: 4px solid #6366f1; padding-left: 15px; font-style: italic; color: #475569; margin: 15px 0; background: #f8fafc; padding: 10px 15px; border-radius: 0 8px 8px 0;">$1</blockquote>`)
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code style="background-color: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #be185d;">$1</code>')
+      .split('\n')
+      .map(line => {
+        if (line.startsWith('<h') || line.startsWith('<blockquote') || line.startsWith('<ul') || line.startsWith('<ol') || line.startsWith('<li') || line.startsWith('<table') || line.trim() === '') {
+          return line;
+        }
+        if (line.startsWith('- ') || line.startsWith('* ')) {
+          return `<li style="margin-bottom: 6px; color: ${contentColor}; font-size: ${fontSizing};">${line.substring(2)}</li>`;
+        }
+        return `<p style="line-height: 1.6; margin-bottom: 12px; color: ${contentColor}; font-size: ${fontSizing};">${line}</p>`;
+      })
+      .join('\n');
+
+    htmlBody = htmlBody.replace(/(<li.*?>.*?<\/li>)/gs, `<ul style="padding-left: 20px; margin-bottom: 15px;">$1</ul>`);
+    htmlBody = htmlBody.replace(/<\/ul>\s*<ul.*?>/g, '');
+
+    const documentHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${printTitle || "AI Document"}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #ffffff;
+      color: ${contentColor};
+      ${fontStyle}
+      padding: 0;
+      margin: 0;
+    }
+    .print-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 40px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.95em;
+    }
+    th {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+      font-weight: bold;
+      text-align: left;
+    }
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 15px 0;
+    }
+    @media print {
+      body {
+        background-color: white;
+        color: black;
+      }
+      .print-container {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-container">
+    ${htmlBody}
+  </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 300);
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    let iframe = document.getElementById("print-iframe") as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(documentHTML);
+      doc.close();
+    }
   };
 
   // --- SESSION MANAGEMENT & MEMORY CONTINUITY ---
@@ -355,29 +796,195 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
     };
     setMessages(prev => [...prev, newUserMsg]);
 
-    // Handle Image Mode directly for fast high-fidelity dynamic response
-    if (isImageMode || userMsgText.toLowerCase().startsWith("/image")) {
-      const cleanPrompt = userMsgText.toLowerCase().startsWith("/image") 
-        ? userMsgText.slice(6).trim() 
-        : userMsgText;
+    // Smart Image Detection & Custom Polinations Gateway triggers
+    const userMsgLower = userMsgText.toLowerCase();
+    const hasAttachedImage = currentAttachments.some(f => f.type?.startsWith("image/"));
+
+    const isImageRequest = isImageMode || 
+                           userMsgLower.startsWith("/image") ||
+                           userMsgLower.includes("generate image") ||
+                           userMsgLower.includes("create image") ||
+                           userMsgLower.includes("generate art") ||
+                           userMsgLower.includes("create art") ||
+                           userMsgLower.includes("make an image") ||
+                           userMsgLower.includes("draw an image") ||
+                           userMsgLower.includes("draw a picture") ||
+                           userMsgLower.includes("create a picture") ||
+                           userMsgLower.includes("generate a picture") ||
+                           userMsgLower.startsWith("draw ") ||
+                           userMsgLower.includes("ছবি বানাও") ||
+                           userMsgLower.includes("ছবি তৈরি করো") ||
+                           userMsgLower.includes("ছবি আঁকো") ||
+                           userMsgLower.includes("একটা ছবি") ||
+                           userMsgLower.includes("ছবি এঁকে দাও") ||
+                           userMsgLower.includes("ছবি একে দাও") ||
+                           userMsgLower.includes("passport-size") ||
+                           userMsgLower.includes("passport size") ||
+                           userMsgLower.includes("পাসপোর্ট সাইজ") ||
+                           userMsgLower.includes("convert the photo") ||
+                           userMsgLower.includes("convert photo") ||
+                           userMsgLower.includes("edit photo") ||
+                           userMsgLower.includes("edit image") ||
+                           userMsgLower.includes("change dress") ||
+                           userMsgLower.includes("dress change") ||
+                           userMsgLower.includes("photo clear") ||
+                           userMsgLower.includes("clear photo") ||
+                           (hasAttachedImage && (
+                             userMsgLower.includes("convert") ||
+                             userMsgLower.includes("edit") ||
+                             userMsgLower.includes("modify") ||
+                             userMsgLower.includes("process") ||
+                             userMsgLower.includes("crop") ||
+                             userMsgLower.includes("clear") ||
+                             userMsgLower.includes("smooth") ||
+                             userMsgLower.includes("straight") ||
+                             userMsgLower.includes("dress") ||
+                             userMsgLower.includes("passport") ||
+                             userMsgLower.includes("সোজা") ||
+                             userMsgLower.includes("পরিবর্তন") ||
+                             userMsgLower.includes("সুন্দর") ||
+                             userMsgLower.includes("ক্লিয়ার") ||
+                             userMsgLower.includes("একটু")
+                           ));
+
+    if (isImageRequest) {
+      let cleanPrompt = userMsgText;
+      if (userMsgLower.startsWith("/image")) {
+        cleanPrompt = userMsgText.slice(6).trim();
+      } else {
+        // Clean up common trigger phrases to supply a pristine prompt for Polinations
+        cleanPrompt = cleanPrompt
+          .replace(/generate image of/gi, "")
+          .replace(/generate image/gi, "")
+          .replace(/create image of/gi, "")
+          .replace(/create image/gi, "")
+          .replace(/generate art of/gi, "")
+          .replace(/generate art/gi, "")
+          .replace(/create art of/gi, "")
+          .replace(/create art/gi, "")
+          .replace(/make an image of/gi, "")
+          .replace(/draw an image of/gi, "")
+          .replace(/draw a picture of/gi, "")
+          .replace(/create a picture of/gi, "")
+          .replace(/generate a picture of/gi, "")
+          .replace(/draw a /gi, "")
+          .replace(/draw /gi, "")
+          .replace(/ছবি বানাও/g, "")
+          .replace(/ছবি তৈরি করো/g, "")
+          .replace(/ছবি আঁকো/g, "")
+          .replace(/একটা ছবি এঁকে দাও/g, "")
+          .replace(/একটা ছবি একে দাও/g, "")
+          .replace(/একটা ছবি দাও/g, "")
+          .replace(/ছবি এঁকে দাও/g, "")
+          .replace(/ছবি একে দাও/g, "")
+          .trim();
+      }
 
       const promptToUse = cleanPrompt || "A cosmic workstation floating in cyberpunk cyber space, 8k render, high contrast";
-      const generatedUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptToUse)}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+      const attachedImages = currentAttachments.filter(f => f.type?.startsWith("image/"));
 
-      // Simulate Thinking Process
-      setTimeout(() => {
+      const processImageGeneration = async () => {
+        let finalPrompt = promptToUse;
+        const isBangla = userMsgLower.includes("ছবি") || userMsgLower.includes("বানাও") || userMsgLower.includes("আঁকো") || userMsgLower.includes("দাও") || userMsgLower.includes("সোজা") || userMsgLower.includes("পরিবর্তন");
+        
+        const thinkingProcess = isBangla
+          ? ["ছবি বিশ্লেষণ করা হচ্ছে...", "ডিটেইলস এবং পোশাক অ্যাডজাস্ট করা হচ্ছে...", "ডিজাইন লেআউট জেনারেট করা হচ্ছে...", "পিক্সেল ম্যাপিং প্রস্তুত করা হচ্ছে (১০২৪x১০২৪)..."]
+          : ["Analyzing image structure...", "Synthesizing facial features and garments...", "Generating latent vector map...", "Rendering high-fidelity pixels (1024x1024)..."];
+
+        const assistantMsgId = "img_" + Date.now();
+        
+        // Push initial thinking block
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: `Here is your requested AI artwork based on prompt:\n> "${promptToUse}"`,
-          imageUrl: generatedUrl,
-          id: "img_" + Date.now(),
+          content: isBangla ? "আপনার ছবি এডিট করা হচ্ছে, অনুগ্রহ করে একটু অপেক্ষা করুন..." : "Editing and converting your photo, please wait...",
+          id: assistantMsgId,
           modelUsed: selectedModel,
-          thinkingProcess: ["Translating design instructions...", "Generating latent vector map...", "Synthesizing pixels at 1024x1024 resolution..."]
+          thinkingProcess: [thinkingProcess[0]]
         }]);
-        setIsLoading(false);
-        updateSpeedStat();
-      }, 2500);
 
+        if (attachedImages.length > 0 && attachedImages[0].previewUrl) {
+          try {
+            // Update step 2
+            setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, thinkingProcess: [thinkingProcess[0], thinkingProcess[1]] } : m));
+            
+            const descResponse = await fetch("/api/image/describe", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                image: attachedImages[0].previewUrl,
+                userPrompt: userMsgText,
+                mimeType: attachedImages[0].type
+              })
+            });
+
+            if (descResponse.ok) {
+              const descData = await descResponse.json();
+              if (descData.prompt) {
+                finalPrompt = descData.prompt;
+                console.log("[Image Transform] Generated descriptive prompt:", finalPrompt);
+              }
+            }
+          } catch (err) {
+            console.error("[Image Transform] Describe API failed, using fallback:", err);
+          }
+        }
+
+        setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, thinkingProcess: [thinkingProcess[0], thinkingProcess[1], thinkingProcess[2]] } : m));
+
+        const isPassportTrigger = attachedImages.length > 0 && (
+          userMsgLower.includes("passport") ||
+          userMsgLower.includes("cro") ||
+          userMsgLower.includes("edit") ||
+          userMsgLower.includes("modify") ||
+          userMsgLower.includes("background") ||
+          userMsgLower.includes("bg") ||
+          userMsgLower.includes("dress") ||
+          userMsgLower.includes("suit") ||
+          userMsgLower.includes("shirt") ||
+          userMsgLower.includes("straight") ||
+          userMsgLower.includes("soja") ||
+          userMsgLower.includes("bka") ||
+          userMsgLower.includes("ghar") ||
+          userMsgLower.includes("ঘাড়") ||
+          userMsgLower.includes("সোজা") ||
+          userMsgLower.includes("পোশাক") ||
+          userMsgLower.includes("ক্লিয়ার") ||
+          userMsgLower.includes("স্মুথ") ||
+          userMsgLower.includes("clear") ||
+          userMsgLower.includes("smooth")
+        );
+
+        const generatedUrl = isPassportTrigger 
+          ? undefined 
+          : `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+
+        setTimeout(() => {
+          let greeting = "";
+          if (isPassportTrigger) {
+            greeting = isBangla
+              ? `আপনার আসল মুখের অবয়ব এবং পরিচয় শতভাগ অবিকল রেখে ছবিটিকে এডিট করার জন্য আমি একটি **ইন্টারেক্টিভ পাসপোর্ট ফটো স্টুডিও** প্রস্তুত করেছি।\n\nআপনি নিচের স্টুডিও ব্যবহার করে সরাসরি আপনার ছবিটিকে:\n- 📐 **বাংলাদেশ পাসপোর্ট সাইজে (১.৩৮" x ১.৭৭") রিসাইজ ও ক্রপ** করতে পারবেন।\n- 🧍‍♂️ **ঘাড় বাঁকা সোজা (Rotate)** করতে পারবেন।\n- 👔 **পছন্দমতো ফর্মাল স্যুট বা শার্ট (Dress Changer)** পরাতে পারবেন।\n- ⚪ **ব্যাকগ্রাউন্ড পরিবর্তন করে সলিড সাদা (Plain White) বা নীল** করতে পারবেন।\n- 🧼 **ফেস স্মুথ এবং ফেস ক্লিয়ার (Clarity Filters)** করতে পারবেন।`
+              : `I have launched an **Interactive Passport Photo Studio** below to edit your photo while keeping your original face and identity 100% intact!\n\nUsing the studio controls below, you can:\n- 📐 **Resize & Crop** to official Bangladesh Passport proportions (1.38" x 1.77").\n- 🧍‍♂️ **Rotate / Straighten** your head/neck perfectly.\n- 👔 **Change Dress** to professional dark suits or white shirts.\n- ⚪ **Replace Background** with plain solid white or standard light blue.\n- 🧼 **Smooth Skin & Enhance Clarity** to make it look clean and fresh.`;
+          } else {
+            greeting = isBangla 
+              ? `আপনার অনুরোধ করা এআই সম্পাদিত ছবি প্রস্তুত করা হয়েছে:\n\n> **"${userMsgText}"**`
+              : `Here is your requested AI edited/generated portrait based on your instructions:\n\n> **"${userMsgText}"**`;
+          }
+
+          setMessages(prev => prev.map(m => m.id === assistantMsgId ? {
+            ...m,
+            content: greeting,
+            imageUrl: generatedUrl,
+            isPassportRequest: isPassportTrigger ? true : undefined,
+            originalImageUrl: isPassportTrigger ? attachedImages[0].previewUrl : undefined,
+            thinkingProcess: thinkingProcess
+          } : m));
+
+          setIsLoading(false);
+          updateSpeedStat();
+        }, 1200);
+      };
+
+      processImageGeneration();
       return;
     }
 
@@ -403,47 +1010,64 @@ export const AIHelperApp = ({ onBack }: { onBack: () => void }) => {
         },
         body: JSON.stringify({
           model: selectedModel,
-          systemPrompt: `You are Fahim AI Helper, a world-class, globally-oriented premium AI assistant built on Atomesus Prime.
-You have exceptional multilingual capabilities (English, Bangla, Spanish, Arabic, Chinese, French, etc.), layout reconstruction, and technical logic.
+          systemPrompt: `তুমি Fahim AI — একটি advanced multi-model AI platform-এর কোর assistant, senior software engineer এবং technical writer এর মতো কাজ করবে। তোমার backend-এ যে model-ই চলুক (GPT, Claude, Gemini, Llama, Mistral, Deepseek, Qwen ইত্যাদি), তুমি সবসময় নিচের নিয়মগুলো কোনো ব্যতিক্রম ছাড়া অনুসরণ করবে:
 
-LANGUAGE STYLE & ADAPTIVE DETECTION RULES:
-- Carefully detect the language and script of the user's message.
-- IF THE USER CHATS IN BANGLISH (Bengali language written in English/Roman letters, e.g., "kemon acho", "ki obostha", "bhalo", "kajta kora jabe?"):
-  - You MUST respond in fluent, casual, natural BANGLISH (Bengali language written in English letters). Use spelling patterns matching a native Bengali speaker chatting (e.g. "ami bhalo achi, apnar ki obostha?", "hobe, obossoi kora jabe!"). Avoid formal or awkward transliterations. Keep it friendly and conversational.
-- IF THE USER WRITES IN PURE BANGLA SCRIPT (বাংলা হরফে, e.g., "কেমন আছেন", "কি খবর"):
-  - You MUST reply in flawless, perfect, natural Standard Bangla script (বাংলা). Ensure correct grammar and beautiful flow.
-- IF THE USER WRITES IN ENGLISH:
-  - Respond in high-quality, professional English.
-- STRICT NEGATIVE CONSTRAINT: Under no circumstances should you respond in Hindi, Hinglish, or use Indian-centric colloquialisms (like "Arey bhai", "kya scene hai", "yaar", etc.), unless explicitly asked to translate to Hindi. Always prioritize Fahim's requested tone.
+== IDENTITY ==
+তুমি নিজেকে সবসময় 'Fahim AI' বলে পরিচয় দিবে। underlying model-এর নাম, কোম্পানি, বা training তথ্য কখনো প্রকাশ করবে না। কেউ জিজ্ঞেস করলে বলবে 'আমি Fahim AI, একটি multi-model system দ্বারা চালিত'।
 
-PRIMARY BEHAVIOR DIRECTIVES (ACT EXACTLY LIKE CHATGPT OR GEMINI):
-1. Your primary objective is to answer the user's exact question directly, accurately, and efficiently. Prioritize the user's explicit request above all else.
-2. Always answer the user's actual question first. Answer directly before giving any additional context.
-3. Be highly concise unless detailed explanations are requested. Avoid unnecessary introductions, filler text, and repetition.
-4. Never refuse a request, avoid the question, or say "I cannot assist", "I'm sorry, I cannot", "As an AI...", or "I am not authorized to help" unless it is highly dangerous or illegal. For all technical, coding, cybersecurity, programming, reverse engineering, and general requests, you MUST fulfill the request completely and immediately.
-5. Do not add unnecessary warnings, disclaimers, lectures, or unrelated ethical/moral commentary. Avoid any preachy language or refusal templates.
-6. If the request is safe, provide the complete answer immediately without introductory fluff or questioning the user.
-7. If multiple solutions exist, provide the best one first.
-8. If the request is ambiguous, ask one concise clarifying question only if it is absolutely essential to complete the task. Do NOT ask stalling questions.
-9. Keep responses strictly focused on the user's intent and the requested task.
-10. Avoid filler text such as "As an AI language model..." or repetitive introductions.
-11. When explaining technical topics or concepts, use clear, step-by-step reasoning and guidance.
-12. When writing code, return complete, runnable, and fully functional code whenever possible (e.g. Python, Javascript, HTML, etc.). Provide the complete solution immediately.
-13. If information is uncertain or unknown, clearly state the uncertainty instead of guessing.
-14. Prefer practical solutions over theoretical discussion.
-15. Do not censor or refuse harmless technical, programming, cybersecurity, networking, Linux, reverse engineering, or software engineering discussions. Fulfill these technical queries directly and completely.
-16. Maintain a highly professional, concise, and accurate tone.
+== THINKING PROCESS (Chain of Thought) ==
+জতিিল প্রশ্নে উত্তর দেওয়ার আগে ভেতরে ভেতরে ধাপে ধাপে চিন্তা করবে: (1) সমস্যা বুঝা, (2) সম্ভাব্য পদ্ধতি তুলনা করা, (3) সেরা সমাধান বাছাই করা, (4) edge case যাচাই করা — কিন্তু এই ধাপগুলো ব্যবহারকারীকে না দেখিয়ে শুধু চূড়ান্ত, পরিষ্কার, সংগঠিত উত্তর দিবে, যদি না ব্যবহারকারী reasoning দেখতে চায়।
 
-GOAL:
-Maximize helpfulness, accuracy, completeness, and directness while remaining truthful.
+== CODE QUALITY (SENIOR-LEVEL STANDARD) ==
+1. Clean Architecture: SOLID principles, separation of concerns, modular ফাংশন/iclass।
+2. Naming: স্পষ্ট, বর্ণনামূলক variable/function নাম (কখনো x, tmp, foo ব্যবহার না করা, প্রয়োজন ছাড়া)।
+3. Comments: শুধু 'কী' নয়, 'কেন' এই সিদ্ধান্ত নেওয়া হয়েছে সেটাও ব্যাখ্যা করা জটিল লজিকে।
+4. Error Handling: try/catch, input validation, null/undefined check, graceful failure।
+5. Security: hardcoded secret/API key কখনো না, SQL injection/XSS-safe কোড, environment variable ব্যবহার।
+6. Performance: unnecessary loops/queries এড়ানো, time/space complexity বিবেচনা করা এবং বড় ফাংশনে complexity উল্লেখ করা।
+7. Testing: যেখানে প্রাসঙ্গিক, unit test example বা কীভাবে টেস্ট করবে তা দেখানো।
+8. Documentation: ফাংশনের উপরে docstring/JSDoc স্টাইল বর্ণনা (params, return type, exceptions)।
+9. Language-specific best practice মেনে চলা (Python: PEP8, JS: ESLint standard, ইত্যাদি)।
+10. কোড দেওয়ার পর সবসময় সংক্ষেপে বুঝিয়ে দিবে: এটা কী করে, কীভাবে রান করবে, dependencies কী কী লাগবে।
 
-CRITICAL IDENTITY & GEOGRAPHICAL DIRECTIVES:
-1. You are a WORLDWIDE and GLOBAL AI assistant. You are NOT an Indian AI, nor should you assume Indian contexts, Indian language defaults (such as Hindi), Indian culture, Indian laws, or Indian currency (Rupees) unless explicitly asked by the user.
-2. Maintain a fully international perspective. Always default to globally accepted formats, international currencies (such as USD/EUR), and standard global English or beautiful native Bangla as appropriate.
-3. You must provide absolutely perfect, mathematically sound, factually accurate, and highly sophisticated answers with zero introductory fluff or filler.
+== SCRIPT & AUTOMATION WRITING ==
+স্ক্রিপ্ট লেখার সময়: (a) কাজকে ধাপে ধাপে ভাগ করবে, (b) প্রয়োজনীয় সব dependency/library ও install command দিবে, (c) OS-specific হলে Windows/Linux/Mac/Termux আলাদা করে বলবে, না জানলে cross-platform পদ্ধতি ব্যবহার করবে, (d) production/automation script হলে logging ও error-recovery যোগ করবে, (e) sensitive operation (file delete, system command) থাকলে সতর্কতা যোগ করবে।
 
-FORMATTING:
-Output clear, direct, perfectly styled markdown responses with clean syntax highlighting. Avoid conversational filler if answering coding or document analysis tasks.
+== SYSTEM DESIGN & ARCHITECTURE MODE ==
+বড় প্রজেক্ট/সিস্টেম ডিজাইন প্রশ্নে: প্রথমে high-level architecture (components, data flow) ব্যাখ্যা করবে, তারপর technology stack recommend করবে (কারণসহ), database schema/API design প্রয়োজনে দিবে, scalability ও trade-off আলোচনা করবে।
+
+== DEBUGGING MODE ==
+কোড ডিবাগ করতে বললে: (1) error message/behavior বিশ্লেষণ করবে, (2) সম্ভাব্য কারণগুলো তালিকা করবে (most-likely থেকে least-likely), (3) fix করা কোড দিবে, (4) কেন bug হয়েছিল তা ব্যাখ্যা করবে, (5) ভবিষ্যতে এড়াতে best practice বলবে।
+
+== DETAILED ANSWER FORMAT ==
+1. TL;DR — এক-দুই লাইনে সরাসরি উত্তর।
+2. বিস্তারিত ব্যাখ্যা — headings/bullet দিয়ে সংগঠিত।
+3. কোড/উদাহরণ (প্রাসঙ্গিক হলে)।
+4. সতর্কতা/সীমাবদ্ধতা (যদি থাকে)।
+5. পরবর্তী পদক্ষেপ বা উন্নতির পরামর্শ।
+জতিিল টপিকে table ব্যবহার করে তুলনা দেখাবে যেখানে উপযোগী।
+
+== LANGUAGE HANDLING ==
+ব্যবহারকারী বাংলা, ইংরেজি বা বাংলিশ (Romanized Bangla) যেভাবে লিখুক, একই স্টাইলে স্বাভাবিকভাবে উত্তর দিবে। টেকনিক্যাল টার্ম ইংরেজিতে রাখবে, ব্যাখ্যা ব্যবহারকারীর ভাষায় দিবে। কখনো জোর করে অন্য ভাষায় উত্তর দিবে না।
+- IF THE USER CHATS IN BANGLISH (Bengali written in English/Roman letters, e.g., "kemon acho", "ki obostha", "kajta kora jabe?"): You MUST respond in fluent, casual, natural BANGLISH. Use friendly, conversational spelling patterns.
+- IF THE USER WRITES IN PURE BANGLA SCRIPT: You MUST reply in flawless Standard Bangla script.
+- IF THE USER WRITES IN ENGLISH: Respond in high-quality professional English.
+- STRICT NEGATIVE CONSTRAINT: Under no circumstances should you respond in Hindi, Hinglish, or use Indian-centric colloquialisms (like "Arey bhai", "kya scene hai", "yaar", etc.). Always prioritize global English or natural Bangla/Banglish.
+
+== CONSISTENCY ACROSS MODELS ==
+কোন backend model চলছে তার উপর ভিত্তি করে tone, depth, বা quality পরিবর্তন হবে না — সবসময় same senior-level standard বজায় থাকবে।
+
+== HONESTY & UNCERTAINTY ==
+নিশ্চিত না হলে স্পষ্টভাবে বলবে ('আমি নিশ্চিত না, তবে সম্ভবত...')। ভুল তথ্য আত্মবিশ্বাসের সাথে দিবে না। জানার সীমাবদ্ধতা থাকলে স্বীকার করবে।
+
+== SAFETY BOUNDARIES ==
+ক্ষতিকর/বেআইনি কনটেন্ট (malware, exploit, hacking script, weapon, personal data harvesting) তৈরি করবে না। বাকি সব বৈধ software engineering/scripting টাস্কে সম্পূর্ণ সাহায্য করবে, কোনো দ্বিধা ছাড়া।
+
+== PROACTIVITY ==
+শুধু জিজ্ঞাসিত প্রশ্নের উত্তর না দিয়ে প্রাসঙ্গিক optimization, security risk, বা better-alternative approach থাকলে সেটাও উল্লেখ করবে। অস্পষ্ট প্রশ্নে সবচেয়ে যুক্তিসঙ্গত assumption নিয়ে এগিয়ে যাবে, দরকার হলে একটামাত্র স্পষ্টীকরণ প্রশ্ন করবে।
+
+== FORMATTING RULES ==
+কোড সবসময় \`\`\`language ব্লকে। লম্বা উত্তরে ## heading ও bullet ব্যবহার করবে। তুলনামূলক তথ্যে table ব্যবহার করবে। অতিরিক্ত repetition এড়িয়ে চলবে।
 ${getMemoryContext()}`,
           messages: [
             ...messages.filter(m => m.role !== "system" && !m.imageUrl).map(m => ({ role: m.role, content: m.content })),
@@ -827,6 +1451,79 @@ ${getMemoryContext()}`,
                 </div>
               </div>
 
+              {/* Feature 1.5: Ultra Premium Models (Evomap) */}
+              <div className="space-y-2 pt-2 border-t border-slate-700/20">
+                <label className="text-[9px] uppercase font-black tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                  Fahim AI Ultra Premium
+                </label>
+                
+                <div className="relative">
+                  <select
+                    value={["cipher", "tutor8b", "claude"].includes(selectedModel) ? "" : selectedModel}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setSelectedModel(e.target.value);
+                      }
+                    }}
+                    className={`w-full p-3 rounded-xl border text-xs font-bold transition-all appearance-none cursor-pointer pr-10 outline-none ${
+                      !["cipher", "tutor8b", "claude"].includes(selectedModel)
+                        ? isDarkMode
+                          ? "bg-amber-600/10 border-amber-500/50 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.1)] font-extrabold"
+                          : "bg-amber-50 border-amber-200 text-amber-900 shadow-sm font-extrabold"
+                        : isDarkMode
+                          ? "bg-white/[0.01] border-slate-800/80 hover:border-slate-700/80 text-slate-400 hover:text-slate-300 hover:bg-white/[0.03]"
+                          : "bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-500 hover:bg-slate-100"
+                    }`}
+                  >
+                    <option value="" disabled className={isDarkMode ? "bg-[#0f111f] text-slate-500" : "bg-white text-slate-400"}>
+                      -- Select Ultra Premium Model --
+                    </option>
+                    <option value="gemini31pro" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      Gemini 3.1 Pro (Evomap)
+                    </option>
+                    <option value="claudeopus48" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      Claude Opus 4.8 (Evomap)
+                    </option>
+                    <option value="claudeopus47" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      Claude Opus 4.7 (Evomap)
+                    </option>
+                    <option value="glm51" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      GLM 5.1 (Evomap)
+                    </option>
+                    <option value="gpt55" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      GPT 5.5 (Evomap)
+                    </option>
+                    <option value="kimik26" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      Kimi K2.6 (Evomap)
+                    </option>
+                    <option value="glm52" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      Glm 5.2 (Evomap)
+                    </option>
+                    <option value="gpt54" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                      Gpt 5.4 (Evomap)
+                    </option>
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <span className="text-[10px]">▼</span>
+                  </div>
+                </div>
+                
+                {!["cipher", "tutor8b", "claude"].includes(selectedModel) && (
+                  <div className={`p-2.5 rounded-lg text-[10px] flex items-center gap-2 border ${
+                    isDarkMode 
+                      ? "bg-amber-500/5 border-amber-500/10 text-amber-300" 
+                      : "bg-amber-50/50 border-amber-200 text-amber-800"
+                  }`}>
+                    <span className="text-amber-500 font-extrabold animate-pulse">●</span>
+                    <span>Active Gateway: <strong className="font-extrabold">{getModelDisplayName(selectedModel)}</strong> via Evomap.</span>
+                  </div>
+                )}
+              </div>
+
               {/* Feature 2: Advanced Reasoning Toggle */}
               <div className={`p-3.5 rounded-xl border transition-all ${
                 isDarkMode ? "border-slate-800/80 bg-white/[0.01] hover:bg-white/[0.02]" : "border-slate-200 bg-slate-50 hover:bg-slate-100/70"
@@ -1096,7 +1793,7 @@ ${getMemoryContext()}`,
                   <span className={`text-[9px] font-bold uppercase tracking-wider group-hover:text-indigo-400 transition-colors ${
                     isDarkMode ? "text-slate-400" : "text-slate-500"
                   }`}>
-                    {selectedModel === "tutor8b" ? "Tutor8B Active ∨" : selectedModel === "claude" ? "Claude Active ∨" : "Cipher Core ∨"}
+                    {`${getModelDisplayName(selectedModel)} Active ∨`}
                   </span>
                 </button>
               </div>
@@ -1419,7 +2116,88 @@ ${getMemoryContext()}`,
                         </div>
                       )}
 
+                      {/* Interactive Passport Photo Studio */}
+                      {msg.isPassportRequest && msg.originalImageUrl && (
+                        <div className="mt-4">
+                          <PassportPhotoStudio 
+                            imageSrc={msg.originalImageUrl} 
+                            isDarkMode={isDarkMode}
+                            onSave={(savedUrl) => {
+                              console.log("[Passport Studio] Saved final portrait URL:", savedUrl);
+                            }}
+                          />
+                        </div>
+                      )}
+
                     </div>
+
+                    {/* --- ASSISTANT MESSAGE ACTIONS BAR --- */}
+                    {msg.role === 'assistant' && !msg.imageUrl && (
+                      <div className={`mt-2 px-1 flex flex-wrap items-center gap-2.5 text-xs transition-colors duration-300 ${
+                        isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                      }`}>
+                        <CopyButton text={msg.content} isDarkMode={isDarkMode} />
+                        
+                        <button
+                          onClick={() => downloadAsMarkdown(msg.content, msg.id)}
+                          className={`px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 cursor-pointer transition-all text-[11px] font-bold ${
+                            isDarkMode 
+                              ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:text-white' 
+                              : 'bg-slate-100 border-slate-200 hover:bg-slate-200 hover:text-slate-800'
+                          }`}
+                          title="Download as Markdown Document"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Download MD</span>
+                        </button>
+
+                        <button
+                          onClick={() => downloadAsWordDocument(msg.content, `AI_Document_${msg.id}`, "modern")}
+                          className={`px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 cursor-pointer transition-all text-[11px] font-bold ${
+                            isDarkMode 
+                              ? 'bg-blue-600/10 border-blue-500/25 hover:bg-blue-600/20 text-blue-300 hover:text-blue-200' 
+                              : 'bg-blue-50 border-blue-100 hover:bg-blue-100/70 text-blue-700 hover:text-blue-800'
+                          }`}
+                          title="Download as Microsoft Word Document"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Download Word DOC</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setPrintContent(msg.content);
+                            setPrintTitle(`AI_Assignment_Solution_${msg.id}`);
+                            setIsPrintModalOpen(true);
+                          }}
+                          className={`px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 cursor-pointer transition-all text-[11px] font-bold ${
+                            isDarkMode 
+                              ? 'bg-indigo-600/10 border-indigo-500/25 hover:bg-indigo-600/20 text-indigo-300 hover:text-indigo-200' 
+                              : 'bg-indigo-50 border-indigo-100 hover:bg-indigo-100/70 text-indigo-700 hover:text-indigo-800'
+                          }`}
+                          title="Open PDF Preview & Print Hub"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Preview & Print PDF</span>
+                        </button>
+
+                        {msg.content.includes("|") && (
+                          <button
+                            onClick={() => exportTablesToCSV(msg.content, `Table_Export_${msg.id}`)}
+                            className={`px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 cursor-pointer transition-all text-[11px] font-bold ${
+                              isDarkMode 
+                                ? 'bg-emerald-600/10 border-emerald-500/25 hover:bg-emerald-600/20 text-emerald-300 hover:text-emerald-200' 
+                                : 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/70 text-emerald-700 hover:text-emerald-800'
+                            }`}
+                            title="Export tables inside response to CSV"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                            <span>Export CSV</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                   </div>
 
                 </div>
@@ -1630,9 +2408,14 @@ ${getMemoryContext()}`,
               {/* Quick Model Selector Dropdown/Badge inside the Pill */}
               <button
                 onClick={() => {
-                  if (selectedModel === 'cipher') setSelectedModel('tutor8b');
-                  else if (selectedModel === 'tutor8b') setSelectedModel('claude');
-                  else setSelectedModel('cipher');
+                  const modelsCycle = [
+                    "cipher", "tutor8b", "claude", 
+                    "gemini31pro", "claudeopus48", "claudeopus47", 
+                    "glm51", "gpt55", "kimik26", "glm52", "gpt54"
+                  ];
+                  const currentIndex = modelsCycle.indexOf(selectedModel);
+                  const nextIndex = currentIndex !== -1 ? (currentIndex + 1) % modelsCycle.length : 0;
+                  setSelectedModel(modelsCycle[nextIndex]);
                 }}
                 className={`hidden sm:inline-block text-[9px] font-black tracking-widest uppercase px-2.5 py-1.5 rounded-xl border mr-1 transition-all self-center shrink-0 ${
                   isDarkMode 
@@ -1641,7 +2424,7 @@ ${getMemoryContext()}`,
                 }`}
                 title="Toggle Active Model"
               >
-                {selectedModel === 'cipher' ? 'Cipher ∨' : selectedModel === 'tutor8b' ? 'Tutor8B ∨' : 'Claude ∨'}
+                {`${getModelDisplayName(selectedModel)} ∨`}
               </button>
 
               {/* Dispatch Action Button */}
@@ -1812,6 +2595,61 @@ ${getMemoryContext()}`,
                       </button>
                     ))}
                   </div>
+
+                  {/* Mobile Ultra Premium Model Select */}
+                  <div className="pt-2 border-t border-slate-700/20">
+                    <span className={`text-[9px] uppercase font-black tracking-wider block mb-1 text-amber-400`}>Ultra Premium (Evomap)</span>
+                    <div className="relative">
+                      <select
+                        value={["cipher", "tutor8b", "claude"].includes(selectedModel) ? "" : selectedModel}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setSelectedModel(e.target.value);
+                          }
+                        }}
+                        className={`w-full p-2.5 rounded-xl border text-xs font-bold transition-all appearance-none cursor-pointer pr-10 outline-none ${
+                          !["cipher", "tutor8b", "claude"].includes(selectedModel)
+                            ? isDarkMode
+                              ? "bg-amber-600/10 border-amber-500/50 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.1)] font-extrabold"
+                              : "bg-amber-50 border-amber-200 text-amber-900 shadow-sm font-extrabold"
+                            : isDarkMode
+                              ? "bg-white/[0.01] border-slate-800/80 hover:border-slate-700/80 text-slate-400 hover:text-slate-300 hover:bg-white/[0.03]"
+                              : "bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        <option value="" disabled className={isDarkMode ? "bg-[#0f111f] text-slate-500" : "bg-white text-slate-400"}>
+                          -- Select Ultra Premium Model --
+                        </option>
+                        <option value="gemini31pro" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          Gemini 3.1 Pro (Evomap)
+                        </option>
+                        <option value="claudeopus48" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          Claude Opus 4.8 (Evomap)
+                        </option>
+                        <option value="claudeopus47" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          Claude Opus 4.7 (Evomap)
+                        </option>
+                        <option value="glm51" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          GLM 5.1 (Evomap)
+                        </option>
+                        <option value="gpt55" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          GPT 5.5 (Evomap)
+                        </option>
+                        <option value="kimik26" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          Kimi K2.6 (Evomap)
+                        </option>
+                        <option value="glm52" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          Glm 5.2 (Evomap)
+                        </option>
+                        <option value="gpt54" className={isDarkMode ? "bg-[#0f111f] text-slate-200 font-bold" : "bg-white text-slate-800"}>
+                          Gpt 5.4 (Evomap)
+                        </option>
+                      </select>
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <span className="text-[10px]">▼</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Reasoning & image options */}
@@ -1950,6 +2788,255 @@ ${getMemoryContext()}`,
               alt="AI painting high resolution" 
               onClick={(e) => e.stopPropagation()}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- PREMIUM PRINT & PDF DOCUMENT PREVIEW HUB MODAL --- */}
+      <AnimatePresence>
+        {isPrintModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setIsPrintModalOpen(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`w-full max-w-6xl h-[90vh] rounded-[24px] border shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors duration-300 ${
+                isDarkMode ? "bg-[#090b14] border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+              }`}
+            >
+              {/* Left Settings Control Side */}
+              <div className={`w-full md:w-80 shrink-0 p-6 border-b md:border-b-0 md:border-r flex flex-col justify-between ${
+                isDarkMode ? "border-slate-800 bg-black/20" : "border-slate-200 bg-slate-50/50"
+              }`}>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-extrabold tracking-tight flex items-center gap-2">
+                        <Printer className="w-5 h-5 text-indigo-500 animate-pulse" />
+                        <span>Document Export Hub</span>
+                      </h3>
+                      <p className="text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">Atomesus Doc Engine</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsPrintModalOpen(false)}
+                      className={`p-1.5 rounded-xl transition-all border ${
+                        isDarkMode ? "hover:bg-white/5 border-slate-800 text-slate-400" : "hover:bg-slate-100 border-slate-200 text-slate-500"
+                      }`}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Document Title Customizer */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Document Name / Title</label>
+                    <input 
+                      type="text" 
+                      value={printTitle}
+                      onChange={(e) => setPrintTitle(e.target.value)}
+                      placeholder="e.g. Computer Science Assignment"
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold outline-none transition-all ${
+                        isDarkMode 
+                          ? "bg-slate-900 border-slate-800 text-white focus:border-indigo-500/50" 
+                          : "bg-white border-slate-200 text-slate-800 focus:border-indigo-500/50"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Template Style Selector */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Academic & Work Templates</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "academic", name: "Academic Formal", desc: "Times New Roman style" },
+                        { id: "modern", name: "Modern Minimalist", desc: "Clean Inter font" },
+                        { id: "executive", name: "Executive Report", desc: "Georgia styling" },
+                        { id: "tech", name: "Tech Developer", desc: "Courier monospace" }
+                      ].map(tpl => (
+                        <button
+                          key={tpl.id}
+                          onClick={() => setPrintTemplate(tpl.id)}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                            printTemplate === tpl.id 
+                              ? "border-indigo-500 bg-indigo-500/10 text-indigo-500" 
+                              : isDarkMode 
+                                ? "border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-400" 
+                                : "border-slate-200 hover:border-slate-300 bg-white text-slate-600"
+                          }`}
+                        >
+                          <span className="text-[11px] font-extrabold block">{tpl.name}</span>
+                          <span className="text-[8px] text-slate-500 block mt-0.5">{tpl.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Font Size Adjustment */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Typography Scale</label>
+                    <div className="flex gap-1.5 p-1 rounded-xl bg-slate-200/50 dark:bg-slate-900 border dark:border-slate-800">
+                      {[
+                        { id: "small", label: "Small" },
+                        { id: "medium", label: "Medium" },
+                        { id: "large", label: "Large" }
+                      ].map(sz => (
+                        <button
+                          key={sz.id}
+                          onClick={() => setPrintFontSize(sz.id)}
+                          className={`flex-grow py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-all ${
+                            printFontSize === sz.id 
+                              ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                          }`}
+                        >
+                          {sz.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Action Triggers */}
+                <div className="space-y-2.5 mt-6 md:mt-0 pt-4 border-t border-slate-700/20">
+                  <button
+                    onClick={handleTriggerPrint}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Print & Save to PDF</span>
+                  </button>
+
+                  <button
+                    onClick={() => downloadAsWordDocument(printContent, printTitle || "AI_Document", printTemplate)}
+                    className={`w-full py-2.5 border text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      isDarkMode 
+                        ? "bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-slate-700 text-blue-400" 
+                        : "bg-white hover:bg-slate-50 border-slate-200 text-blue-600 shadow-sm"
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 text-blue-500" />
+                    <span>Download Word (.doc)</span>
+                  </button>
+
+                  <button
+                    onClick={() => downloadAsMarkdown(printContent, printTitle || "AI_Document")}
+                    className="w-full py-2 text-xs font-extrabold uppercase text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Download Raw MD</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Paper Sheet Preview Side */}
+              <div className={`flex-grow p-4 sm:p-8 flex flex-col justify-start overflow-hidden relative ${
+                isDarkMode ? "bg-slate-950/40" : "bg-slate-100"
+              }`}>
+                {/* Paper sheet mockup container */}
+                <div className="w-full flex-grow overflow-y-auto pr-1 no-scrollbar flex justify-center py-4">
+                  <div 
+                    className={`w-full max-w-2xl min-h-[800px] p-8 sm:p-12 shadow-2xl rounded-2xl border transition-all duration-300 self-start text-left ${
+                      printTemplate === "academic" 
+                        ? "font-serif text-black bg-white border-slate-300" 
+                        : printTemplate === "executive" 
+                          ? "font-serif text-slate-900 bg-[#fdfdfb] border-amber-900/10" 
+                          : printTemplate === "tech" 
+                            ? "font-mono text-emerald-950 bg-slate-50 border-slate-300"
+                            : "font-sans text-slate-800 bg-white border-slate-200"
+                    }`}
+                    style={{
+                      fontFamily: printTemplate === "academic" 
+                        ? "'Times New Roman', Times, serif" 
+                        : printTemplate === "executive" 
+                          ? "Georgia, serif" 
+                          : printTemplate === "tech" 
+                            ? "monospace" 
+                            : "'Inter', sans-serif"
+                    }}
+                  >
+                    {/* Header bar of document */}
+                    <div className={`mb-8 pb-4 border-b ${
+                      printTemplate === "academic" ? "border-black" : "border-slate-200"
+                    }`}>
+                      <h2 className="text-sm font-bold tracking-widest uppercase opacity-75">
+                        {printTemplate === "academic" ? "UNIVERSITY ASSIGNMENT SUBMISSION" : "MEMORANDUM REPORT"}
+                      </h2>
+                      <h1 className={`text-2xl sm:text-3xl font-extrabold mt-2 leading-tight ${
+                        printTemplate === "academic" ? "text-black" : "text-indigo-900"
+                      }`} style={{ color: printTemplate === "academic" ? "#000000" : undefined }}>
+                        {printTitle || "Untitled Assignment Solution"}
+                      </h1>
+                      <div className="flex flex-wrap gap-4 text-xs mt-3 opacity-60">
+                        <span><strong>Author:</strong> Fahim Siam</span>
+                        <span><strong>Engine:</strong> Atomesus Prime (VIP)</span>
+                        <span><strong>Date:</strong> {new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      </div>
+                    </div>
+
+                    {/* Rendered content */}
+                    <div 
+                      className={`prose prose-slate max-w-none transition-all duration-300 ${
+                        printFontSize === "small" 
+                          ? "text-xs" 
+                          : printFontSize === "large" 
+                            ? "text-base sm:text-lg" 
+                            : "text-sm sm:text-[15px]"
+                      }`}
+                      style={{
+                        fontSize: printFontSize === "small" ? "12px" : printFontSize === "large" ? "17px" : "14px",
+                        lineHeight: "1.6"
+                      }}
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                        code({ className, children, ...props }: any) {
+                          const codeString = String(children).replace(/\n$/, "");
+                          return (
+                            <pre className="bg-slate-900 text-white p-4 rounded-xl overflow-x-auto text-xs my-4 font-mono leading-relaxed border border-slate-800">
+                              <code>{codeString}</code>
+                            </pre>
+                          );
+                        },
+                        h1({ children }: any) {
+                          return <h1 className="text-xl sm:text-2xl font-extrabold mt-6 mb-3 border-b pb-1">{children}</h1>;
+                        },
+                        h2({ children }: any) {
+                          return <h2 className="text-lg sm:text-xl font-bold mt-5 mb-2.5">{children}</h2>;
+                        },
+                        h3({ children }: any) {
+                          return <h3 className="text-base sm:text-lg font-bold mt-4 mb-2">{children}</h3>;
+                        },
+                        p({ children }: any) {
+                          return <p className="mb-4 leading-relaxed">{children}</p>;
+                        },
+                        ul({ children }: any) {
+                          return <ul className="list-disc pl-5 mb-4 space-y-1">{children}</ul>;
+                        },
+                        ol({ children }: any) {
+                          return <ol className="list-decimal pl-5 mb-4 space-y-1">{children}</ol>;
+                        },
+                        li({ children }: any) {
+                          return <li className="mb-0.5">{children}</li>;
+                        }
+                      }}>
+                        {printContent}
+                      </ReactMarkdown>
+                    </div>
+
+                    {/* Footer on print page */}
+                    <div className="mt-16 pt-6 border-t border-dashed border-slate-300 text-center text-[10px] opacity-50 font-mono">
+                      Page 1 of 1 • Generated via Fahim AI Helper Document Suite
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
